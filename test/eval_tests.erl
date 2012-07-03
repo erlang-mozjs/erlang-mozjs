@@ -84,7 +84,7 @@ charset_test_() ->
 json_test_() ->
   [fun() ->
        Struct = {struct, [{<<"test">>, <<"1">>}]},
-       ?assertMatch(Struct, js_mochijson2:decode(js_mochijson2:encode(Struct))) end].
+       ?assertMatch(Struct, mochijson2:decode(mochijson2:encode(Struct))) end].
 
 ejslog_test_() ->
     [{setup, fun test_util:port_setup/0,

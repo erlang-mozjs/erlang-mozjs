@@ -70,11 +70,11 @@ build_bindings([{VarName, Value}|T], Accum) ->
                        false ->
                            VarName
                    end,
-    build_bindings(T, [[FinalVarName, "=", js_mochijson2:encode(Value), ";"]|Accum]).
+    build_bindings(T, [[FinalVarName, "=", mochijson2:encode(Value), ";"]|Accum]).
 
 build_arg_list([], Accum) ->
     lists:reverse(Accum);
 build_arg_list([H|[]], Accum) ->
-    build_arg_list([], [js_mochijson2:encode(H)|Accum]);
+    build_arg_list([], [mochijson2:encode(H)|Accum]);
 build_arg_list([H|T], Accum) ->
-    build_arg_list(T, [[js_mochijson2:encode(H), ","]|Accum]).
+    build_arg_list(T, [[mochijson2:encode(H), ","]|Accum]).
