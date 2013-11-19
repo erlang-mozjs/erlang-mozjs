@@ -29,7 +29,7 @@ void free_error(spidermonkey_state *state);
 static JSClass global_class = {
     "global", JSCLASS_GLOBAL_FLAGS,
     JS_PropertyStub, JS_PropertyStub, JS_PropertyStub, JS_StrictPropertyStub,
-    JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, JS_FinalizeStub,
+    JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, NULL,
     JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
@@ -49,13 +49,11 @@ char *copy_jsstring(JSContext *cx, JSString *source) {
 }
 
 void begin_request(spidermonkey_vm *vm) {
-  JS_SetContextThread(vm->context);
   JS_BeginRequest(vm->context);
 }
 
 void end_request(spidermonkey_vm *vm) {
   JS_EndRequest(vm->context);
-  JS_ClearContextThread(vm->context);
 }
 
 void on_error(JSContext *context, const char *message, JSErrorReport *report) {
@@ -89,7 +87,7 @@ JSBool on_branch(JSContext *context) {
       return_value = JS_FALSE;
   }
   else if (state->branch_count == 550) {
-    JS_GC(context);
+    JS_GC(JS_GetRuntime(context));
     state->branch_count = 0;
   }
   else if(state->branch_count % 100 == 0) {
@@ -110,7 +108,7 @@ void write_timestamp(FILE *fd) {
           tmp->tm_hour, tmp->tm_min, tmp->tm_sec);
 }
 
-JSBool js_log(JSContext *cx, uintN argc, jsval *vp) {
+JSBool js_log(JSContext *cx, unsigned argc, jsval *vp) {
   if (argc != 2) {
     JS_SET_RVAL(cx, vp, JSVAL_FALSE);
   }
@@ -152,14 +150,15 @@ spidermonkey_vm *sm_initialize(long thread_stack, long heap_size) {
   JS_SetGCParameter(vm->runtime, JSGC_MAX_BYTES, heap_size);
   JS_SetGCParameter(vm->runtime, JSGC_MAX_MALLOC_BYTES, gc_size);
   vm->context = JS_NewContext(vm->runtime, 8192);
-  JS_SetScriptStackQuota(vm->context, thread_stack);
+  // XXX: changed from JS_SetNativeStackQuota, don't know if it's ok
+  JS_SetNativeStackQuota(JS_GetRuntime(vm->context), thread_stack);
 
   begin_request(vm);
   JS_SetOptions(vm->context, JSOPTION_VAROBJFIX);
   JS_SetOptions(vm->context, JSOPTION_STRICT);
   JS_SetOptions(vm->context, JSOPTION_COMPILE_N_GO);
   JS_SetOptions(vm->context, JSVERSION_LATEST);
-  vm->global = JS_NewCompartmentAndGlobalObject(vm->context, &global_class, NULL);
+  vm->global = JS_NewGlobalObject(vm->context, &global_class, NULL);
   JS_InitStandardClasses(vm->context, vm->global);
   JS_SetErrorReporter(vm->context, on_error);
   JS_SetOperationCallback(vm->context, on_branch);
@@ -263,7 +262,7 @@ void free_error(spidermonkey_state *state) {
 
 char *sm_eval(spidermonkey_vm *vm, const char *filename, const char *code, int handle_retval) {
   char *retval = NULL;
-  JSObject *script;
+  JSScript *script;
   jsval result;
 
   if (code == NULL) {
