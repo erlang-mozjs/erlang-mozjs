@@ -134,7 +134,7 @@ JSBool js_log(JSContext *cx, uintN argc, jsval *vp) {
     JS_free(cx, filename);
     JS_free(cx, output);
   }
-  return JSVAL_TRUE;
+  return JS_TRUE;
 }
 
 void sm_configure_locale(void) {
