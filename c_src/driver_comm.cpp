@@ -22,7 +22,7 @@
 
 #include "driver_comm.h"
 
-inline int read_int32(char **data) {
+int read_int32(char **data) {
   char *d = *data;
   int value = ((((int)(((unsigned char*) (d))[0]))  << 24) |
                (((int)(((unsigned char*) (d))[1]))  << 16) |
@@ -33,7 +33,7 @@ inline int read_int32(char **data) {
 }
 
 char *read_command(char **data) {
-  char *buf = ejs_alloc(COMMAND_SIZE + 1);
+  char *buf = (char*)ejs_alloc(COMMAND_SIZE + 1);
   memcpy(buf, (const char *) *data, COMMAND_SIZE);
   buf[COMMAND_SIZE] = '\0';
   (*data) += 2;
@@ -44,7 +44,7 @@ char *read_string(char **data) {
   int length = read_int32(data);
   char *buf = NULL;
   if (length > 0) {
-    buf = ejs_alloc(length + 1);
+    buf = (char*)ejs_alloc(length + 1);
     memcpy(buf, (const char *) *data, length);
     buf[length] = '\0';
     (*data) += length;

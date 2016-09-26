@@ -22,42 +22,46 @@
 #include "driver_comm.h"
 #include "spidermonkey.h"
 
+typedef struct _spidermonkey_error_t {
+  unsigned int lineno;
+  char *msg;
+  char *offending_source;
+} spidermonkey_error;
+
+typedef struct _spidermonkey_state_t {
+  int branch_count;
+  spidermonkey_error *error;
+  int terminate;
+} spidermonkey_state;
+
 void free_error(spidermonkey_state *state);
 
 /* The class of the global object. */
 static JSClass global_class = {
     "global", JSCLASS_GLOBAL_FLAGS,
-    JS_PropertyStub, JS_PropertyStub, JS_PropertyStub, JS_StrictPropertyStub,
+    JS_PropertyStub, JS_DeletePropertyStub, JS_PropertyStub, JS_StrictPropertyStub,
     JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, NULL,
     JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
 char *copy_string(const char *source) {
   size_t size = strlen(source);
-  char *retval = ejs_alloc(size + 1);
+  char *retval = (char*)ejs_alloc(size + 1);
   strncpy(retval, source, size);
   retval[size] = '\0';
   return retval;
 }
 
 char *copy_jsstring(JSContext *cx, JSString *source) {
-  char *buf = JS_EncodeString(cx, source);
+  char *buf = JS_EncodeStringToUTF8(cx, source);
   char *retval = copy_string(buf);
   JS_free(cx, buf);
   return retval;
 }
 
-void begin_request(spidermonkey_vm *vm) {
-  JS_BeginRequest(vm->context);
-}
-
-void end_request(spidermonkey_vm *vm) {
-  JS_EndRequest(vm->context);
-}
-
 void on_error(JSContext *context, const char *message, JSErrorReport *report) {
   if (report->flags & JSREPORT_EXCEPTION) {
-    spidermonkey_error *sm_error = ejs_alloc(sizeof(spidermonkey_error));
+    spidermonkey_error *sm_error = (spidermonkey_error *)ejs_alloc(sizeof(spidermonkey_error));
     if (message != NULL) {
       sm_error->msg = copy_string(message);
     }
@@ -134,44 +138,45 @@ JSBool js_log(JSContext *cx, unsigned argc, jsval *vp) {
   return JS_TRUE;
 }
 
-void sm_configure_locale(void) {
-  JS_SetCStringsAreUTF8();
-}
-
 spidermonkey_vm *sm_initialize(long thread_stack, long heap_size) {
-  spidermonkey_vm *vm = ejs_alloc(sizeof(spidermonkey_vm));
-  spidermonkey_state *state = ejs_alloc(sizeof(spidermonkey_state));
+  spidermonkey_vm *vm = (spidermonkey_vm *)ejs_alloc(sizeof(spidermonkey_vm));
+  spidermonkey_state *state = (spidermonkey_state *)ejs_alloc(sizeof(spidermonkey_state));
   state->branch_count = 0;
   state->error = NULL;
   state->terminate = 0;
   int gc_size = (int) heap_size * 0.25;
-  vm->runtime = JS_NewRuntime(MAX_GC_SIZE);
+
+  vm->runtime = JS_NewRuntime(MAX_GC_SIZE, JS_USE_HELPER_THREADS);
+  JS_SetNativeStackQuota(vm->runtime, thread_stack);
   JS_SetGCParameter(vm->runtime, JSGC_MAX_BYTES, heap_size);
   JS_SetGCParameter(vm->runtime, JSGC_MAX_MALLOC_BYTES, gc_size);
-  vm->context = JS_NewContext(vm->runtime, 8192);
-  // XXX: changed from JS_SetNativeStackQuota, don't know if it's ok
-  JS_SetNativeStackQuota(JS_GetRuntime(vm->context), thread_stack);
 
-  begin_request(vm);
+  vm->context = JS_NewContext(vm->runtime, 8192);
+
+  JS_BeginRequest(vm->context);
+
   JS_SetOptions(vm->context, JSOPTION_VAROBJFIX);
-  JS_SetOptions(vm->context, JSOPTION_STRICT);
+  JS_SetOptions(vm->context, JSOPTION_EXTRA_WARNINGS);
   JS_SetOptions(vm->context, JSOPTION_COMPILE_N_GO);
   JS_SetOptions(vm->context, JSVERSION_LATEST);
+
   vm->global = JS_NewGlobalObject(vm->context, &global_class, NULL);
+  JSAutoCompartment ac(vm->context, vm->global);
   JS_InitStandardClasses(vm->context, vm->global);
   JS_SetErrorReporter(vm->context, on_error);
   JS_SetOperationCallback(vm->context, on_branch);
   JS_SetContextPrivate(vm->context, state);
   JSNative funptr = (JSNative) js_log;
-  JS_DefineFunction(vm->context, JS_GetGlobalObject(vm->context), "ejsLog", funptr,
+  JS_DefineFunction(vm->context, js::GetDefaultGlobalForContext(vm->context), "ejsLog", funptr,
                     0, 0);
-  end_request(vm);
+  JS_EndRequest(vm->context);
 
   return vm;
 }
 
 void sm_stop(spidermonkey_vm *vm) {
-  begin_request(vm);
+  vm->global = NULL;
+  JS_BeginRequest(vm->context);
   spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(vm->context);
   state->terminate = 1;
   JS_SetContextPrivate(vm->context, state);
@@ -182,7 +187,7 @@ void sm_stop(spidermonkey_vm *vm) {
       sleep(1);
   }
 
-  end_request(vm);
+  JS_EndRequest(vm->context);
 
   //Now we should be free to proceed with
   //freeing up memory without worrying about
@@ -193,8 +198,8 @@ void sm_stop(spidermonkey_vm *vm) {
     }
     driver_free(state);
   }
-  JS_SetContextPrivate(vm->context, NULL);
-  JS_DestroyContext(vm->context);
+  //JS_SetContextPrivate(vm->context, NULL);
+  //JS_DestroyContext(vm->context);
   JS_DestroyRuntime(vm->runtime);
   driver_free(vm);
 }
@@ -205,12 +210,12 @@ void sm_shutdown(void) {
 
 char *escape_quotes(char *text) {
   size_t bufsize = strlen(text) * 2;
-  char *buf = ejs_alloc(bufsize);
+  char *buf = (char*)ejs_alloc(bufsize);
   memset(buf, 0, bufsize);
   int i = 0;
   int x = 0;
   int escaped = 0;
-  for (i = 0; i < strlen(text); i++) {
+  for (i = 0; i < (int)strlen(text); i++) {
     if (text[i] == '"') {
       if(!escaped) {
         memcpy(&buf[x], (char *) "\\\"", 2);
@@ -233,7 +238,7 @@ char *escape_quotes(char *text) {
     }
   }
   size_t buf_size = strlen(buf);
-  char *retval = ejs_alloc(buf_size + 1);
+  char *retval = (char*)ejs_alloc(buf_size + 1);
   strncpy(retval, buf, buf_size);
   retval[buf_size] = '\0';
   driver_free(buf);
@@ -244,7 +249,7 @@ char *error_to_json(const spidermonkey_error *error) {
   char *escaped_source = escape_quotes(error->offending_source);
   /* size = length(escaped source) + length(error msg) + JSON formatting */
   size_t size = strlen(escaped_source) + strlen(error->msg) + 80;
-  char *retval = ejs_alloc(size);
+  char *retval = (char*)ejs_alloc(size);
 
   snprintf(retval, size, "{\"error\": {\"lineno\": %d, \"message\": \"%s\", \"source\": \"%s\"}}",
            error->lineno, error->msg, escaped_source);
@@ -268,11 +273,24 @@ char *sm_eval(spidermonkey_vm *vm, const char *filename, const char *code, int h
       return NULL;
   }
 
-  begin_request(vm);
-  script = JS_CompileScript(vm->context,
-                            vm->global,
-                            code, strlen(code),
-                            filename, 1);
+
+    JSAutoCompartment ac(vm->context, vm->global);
+    JSAutoRequest ar(vm->context);
+
+  JS_BeginRequest(vm->context);
+
+//  script = JS_CompileScript(vm->context,
+  //                        vm->global,
+    //                    code, strlen(code),
+      //                filename, 1);
+
+    JS::RootedObject obj(vm->context, vm->global);
+    JS::CompileOptions options(vm->context);
+    options.setUTF8(true).setFileAndLine(filename, 1);
+
+    script = JS::Compile(vm->context, obj, options, code, strlen(code));
+
+
   spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(vm->context);
   if (state->error == NULL) {
     JS_ClearPendingException(vm->context);
@@ -285,7 +303,7 @@ char *sm_eval(spidermonkey_vm *vm, const char *filename, const char *code, int h
           retval = copy_jsstring(vm->context, str);
         }
         else {
-          char *tmp = JS_EncodeString(vm->context, JS_ValueToString(vm->context, result));
+          char *tmp = JS_EncodeStringToUTF8(vm->context, JS_ValueToString(vm->context, result));
 	  if(strcmp(tmp, "undefined") == 0) {
             retval = copy_string("{\"error\": \"Expression returned undefined\", \"lineno\": 0, \"source\": \"unknown\"}");
 	  }
@@ -307,6 +325,6 @@ char *sm_eval(spidermonkey_vm *vm, const char *filename, const char *code, int h
     free_error(state);
     JS_SetContextPrivate(vm->context, state);
   }
-  end_request(vm);
+  JS_EndRequest(vm->context);
   return retval;
 }

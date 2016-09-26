@@ -17,18 +17,7 @@
 #define __SPIDERMONKEY_INTERFACE_
 
 #include "jsapi.h"
-
-typedef struct _spidermonkey_error_t {
-  unsigned int lineno;
-  char *msg;
-  char *offending_source;
-} spidermonkey_error;
-
-typedef struct _spidermonkey_state_t {
-  int branch_count;
-  spidermonkey_error *error;
-  int terminate;
-} spidermonkey_state;
+#include "jsfriendapi.h"
 
 typedef struct _spidermonkey_vm_t {
   JSRuntime* runtime;
@@ -38,8 +27,6 @@ typedef struct _spidermonkey_vm_t {
 
 /* Bytes to allocate before GC */
 #define MAX_GC_SIZE 1024 * 1024
-
-void sm_configure_locale(void);
 
 spidermonkey_vm *sm_initialize(long thread_stack, long heap_size);
 

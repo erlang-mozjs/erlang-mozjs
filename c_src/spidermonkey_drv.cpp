@@ -43,11 +43,14 @@ typedef void (*asyncfun)(void *);
 
 
 /* Forward declarations */
+extern "C" { 
+
 static ErlDrvData start(ErlDrvPort port, char *cmd);
 static int init(void);
 static void stop(ErlDrvData handle);
 static void process(ErlDrvData handle, ErlIOVec *ev);
 static void ready_async(ErlDrvData handle, ErlDrvThreadData async_data);
+}
 
 static ErlDrvEntry spidermonkey_drv_entry = {
     init,                             /* init */
@@ -66,7 +69,7 @@ static ErlDrvEntry spidermonkey_drv_entry = {
     NULL,                             /* flush */
     NULL,                             /* call */
     NULL,                             /* event */
-    ERL_DRV_EXTENDED_MARKER,          /* ERL_DRV_EXTENDED_MARKER */
+    (int)ERL_DRV_EXTENDED_MARKER,          /* ERL_DRV_EXTENDED_MARKER */
     ERL_DRV_EXTENDED_MAJOR_VERSION,   /* ERL_DRV_EXTENDED_MAJOR_VERSION */
     ERL_DRV_EXTENDED_MINOR_VERSION,   /* ERL_DRV_EXTENDED_MINOR_VERSION */
     ERL_DRV_FLAG_USE_PORT_LOCKING     /* ERL_DRV_FLAGs */
@@ -175,17 +178,18 @@ void run_js(void *jsargs) {
   driver_free(call_id);
 }
 
+extern "C" { 
 DRIVER_INIT(spidermonkey_drv) {
   return &spidermonkey_drv_entry;
 }
+}
 
 static int init(void) {
-  sm_configure_locale();
   return 0;
 }
 
 static ErlDrvData start(ErlDrvPort port, char *cmd) {
-  spidermonkey_drv_t *retval = ejs_alloc(sizeof(spidermonkey_drv_t));
+  spidermonkey_drv_t *retval = (spidermonkey_drv_t *)ejs_alloc(sizeof(spidermonkey_drv_t));
   retval->port = port;
   retval->shutdown = 0;
   retval->atom_ok = driver_mk_atom((char *) "ok");
@@ -230,7 +234,7 @@ static void process(ErlDrvData handle, ErlIOVec *ev) {
     driver_free(call_id);
   }
   else {
-    js_call *call_data = ejs_alloc(sizeof(js_call));
+    js_call *call_data = (js_call *)ejs_alloc(sizeof(js_call));
     call_data->driver_data = dd;
     call_data->args = ev->binv[1];
     call_data->return_terms[0] = 0;

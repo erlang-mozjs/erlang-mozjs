@@ -28,7 +28,8 @@ char *read_string(char **data);
 
 /* Wrapper around driver_alloc() that checks  */
 /* for OOM.                                   */
-void erts_exit(int n, char*, ...);
+extern "C" void erts_exit(int n, const char*, ...);
+
 void *ejs_alloc(ErlDrvSizeT size);
 
 #endif
