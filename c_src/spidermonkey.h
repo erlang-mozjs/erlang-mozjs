@@ -18,11 +18,12 @@
 
 #include <jsapi.h>
 #include <jsfriendapi.h>
+#include <js/Conversions.h>
 
 typedef struct _spidermonkey_vm_t {
   JSRuntime* runtime;
   JSContext* context;
-  JSObject* global;
+  JS::RootedObject global;
 } spidermonkey_vm;
 
 /* Bytes to allocate before GC */

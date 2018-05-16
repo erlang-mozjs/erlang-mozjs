@@ -39,9 +39,7 @@ void free_error(spidermonkey_state *state);
 /* The class of the global object. */
 static JSClass global_class = {
     "global", JSCLASS_GLOBAL_FLAGS,
-    JS_PropertyStub, JS_DeletePropertyStub, JS_PropertyStub, JS_StrictPropertyStub,
-    JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, NULL,
-    JSCLASS_NO_OPTIONAL_MEMBERS
+    nullptr, nullptr, JS_PropertyStub, JS_StrictPropertyStub
 };
 
 char *copy_string(const char *source) {
@@ -74,13 +72,13 @@ void on_error(JSContext *context, const char *message, JSErrorReport *report) {
   }
 }
 
-JSBool on_branch(JSContext *context) {
-  JSBool return_value = JS_TRUE;
+bool on_branch(JSContext *context) {
+  bool return_value = true;
   spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(context);
   state->branch_count++;
 
   if (state->terminate)  {
-      return_value = JS_FALSE;
+      return_value = false;
   }
   else if (state->branch_count == 550) {
     JS_GC(JS_GetRuntime(context));
@@ -93,16 +91,18 @@ JSBool on_branch(JSContext *context) {
   return return_value;
 }
 
-JSBool js_log(JSContext *cx, unsigned argc, jsval *vp) {
+bool js_log(JSContext *cx, unsigned argc, jsval *vp) {
+  JS::CallReceiver rec = JS::CallReceiverFromVp(vp);
   if (argc != 2) {
-    JS_SET_RVAL(cx, vp, JSVAL_FALSE);
+    rec.rval().set(JSVAL_FALSE);
   }
   else {
-    jsval *argv = JS_ARGV(cx, vp);
-    jsval jsfilename = argv[0];
-    jsval jsoutput = argv[1];
-    char *filename = JS_EncodeString(cx, JS_ValueToString(cx, jsfilename));
-    char *output = JS_EncodeString(cx, JS_ValueToString(cx, jsoutput));
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+
+    // FIXME
+    char *filename = JS_EncodeString(cx, JS::ToString(cx, args[0]));
+    char *output = JS_EncodeString(cx, JS::ToString(cx, args[1]));
+
     FILE *fd = fopen(filename, "a+");
     if (fd != NULL) {
       struct tm *tmp;
@@ -117,15 +117,16 @@ JSBool js_log(JSContext *cx, unsigned argc, jsval *vp) {
       fwrite(output, 1, strlen(output), fd);
       fwrite("\n", 1, strlen("\n"), fd);
       fclose(fd);
-      JS_SET_RVAL(cx, vp, JSVAL_TRUE);
+
+      rec.rval().set(JSVAL_TRUE);
     }
     else {
-      JS_SET_RVAL(cx, vp, JSVAL_FALSE);
+      rec.rval().set(JSVAL_FALSE);
     }
     JS_free(cx, filename);
     JS_free(cx, output);
   }
-  return JS_TRUE;
+  return true;
 }
 
 spidermonkey_vm *sm_initialize(long thread_stack, long heap_size) {
@@ -136,7 +137,8 @@ spidermonkey_vm *sm_initialize(long thread_stack, long heap_size) {
   state->terminate = 0;
   int gc_size = (int) heap_size * 0.25;
 
-  vm->runtime = JS_NewRuntime(MAX_GC_SIZE, JS_USE_HELPER_THREADS);
+  JS_Init();
+  vm->runtime = JS_NewRuntime(MAX_GC_SIZE);
   JS_SetNativeStackQuota(vm->runtime, thread_stack);
   JS_SetGCParameter(vm->runtime, JSGC_MAX_BYTES, heap_size);
   JS_SetGCParameter(vm->runtime, JSGC_MAX_MALLOC_BYTES, gc_size);
@@ -145,19 +147,22 @@ spidermonkey_vm *sm_initialize(long thread_stack, long heap_size) {
 
   JS_BeginRequest(vm->context);
 
-  JS_SetOptions(vm->context, JSOPTION_VAROBJFIX);
-  JS_SetOptions(vm->context, JSOPTION_EXTRA_WARNINGS);
-  JS_SetOptions(vm->context, JSOPTION_COMPILE_N_GO);
-  JS_SetOptions(vm->context, JSVERSION_LATEST);
+  JS::RuntimeOptionsRef(vm->runtime)
+	  .setVarObjFix(true)
+	  .setExtraWarnings(true);
 
-  vm->global = JS_NewGlobalObject(vm->context, &global_class, NULL);
+  JS::CompartmentOptions options;
+  options.setVersion(JSVERSION_LATEST);
+
+  JS::RootedObject global(vm->context, JS_NewGlobalObject(vm->context, &global_class, nullptr, JS::FireOnNewGlobalHook, options));
+  vm->global = global;
   JSAutoCompartment ac(vm->context, vm->global);
   JS_InitStandardClasses(vm->context, vm->global);
-  JS_SetErrorReporter(vm->context, on_error);
-  JS_SetOperationCallback(vm->context, on_branch);
+  JS_SetErrorReporter(vm->runtime, on_error);
+  JS_SetInterruptCallback(vm->runtime, on_branch);
   JS_SetContextPrivate(vm->context, state);
   JSNative funptr = (JSNative) js_log;
-  JS_DefineFunction(vm->context, js::GetDefaultGlobalForContext(vm->context), "ejsLog", funptr,
+  JS_DefineFunction(vm->context, vm->global, "ejsLog", funptr,
                     0, 0);
   JS_EndRequest(vm->context);
 
@@ -256,46 +261,46 @@ void free_error(spidermonkey_state *state) {
 
 char *sm_eval(spidermonkey_vm *vm, const char *filename, const char *code, int handle_retval) {
   char *retval = NULL;
-  JSScript *script;
-  jsval result;
 
   if (code == NULL) {
       return NULL;
   }
 
 
-    JSAutoCompartment ac(vm->context, vm->global);
-    JSAutoRequest ar(vm->context);
+  JSAutoCompartment ac(vm->context, vm->global);
+  JSAutoRequest ar(vm->context);
 
   JS_BeginRequest(vm->context);
 
-//  script = JS_CompileScript(vm->context,
-  //                        vm->global,
-    //                    code, strlen(code),
-      //                filename, 1);
+  JS::RootedObject obj(vm->context, vm->global);
+  JS::CompileOptions options(vm->context);
+  options
+	  .setUTF8(true)
+	  .setFileAndLine(filename, 1)
+	  .setCompileAndGo(true);
 
-    JS::RootedObject obj(vm->context, vm->global);
-    JS::CompileOptions options(vm->context);
-    options.setUTF8(true).setFileAndLine(filename, 1);
 
-    script = JS::Compile(vm->context, obj, options, code, strlen(code));
+  JS::RootedScript script(vm->context);
+  JS::Compile(vm->context, obj, options, code, strlen(code), &script);
 
 
   spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(vm->context);
   if (state->error == NULL) {
+    JS::RootedValue result(vm->context);
     JS_ClearPendingException(vm->context);
     JS_ExecuteScript(vm->context, vm->global, script, &result);
     state = (spidermonkey_state *) JS_GetContextPrivate(vm->context);
     if (state->error == NULL) {
       if (handle_retval) {
-        if (JSVAL_IS_STRING(result)) {
-          JSString *str = JS_ValueToString(vm->context, result);
+        if (result.isString()) {
+          JS::RootedString str(vm->context, JS::ToString(vm->context, result));
           char *buf = JS_EncodeStringToUTF8(vm->context, str);
           retval = copy_string(buf);
           JS_free(vm->context, buf);
         }
         else {
-          char *tmp = JS_EncodeStringToUTF8(vm->context, JS_ValueToString(vm->context, result));
+          JS::RootedString str(vm->context, JS::ToString(vm->context, result));
+          char *tmp = JS_EncodeStringToUTF8(vm->context, str);
 	  if(strcmp(tmp, "undefined") == 0) {
             retval = copy_string("{\"error\": \"Expression returned undefined\", \"lineno\": 0, \"source\": \"unknown\"}");
 	  }
