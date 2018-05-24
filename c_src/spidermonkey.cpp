@@ -93,17 +93,6 @@ JSBool on_branch(JSContext *context) {
   return return_value;
 }
 
-void write_timestamp(FILE *fd) {
-  struct tm *tmp;
-  time_t t;
-
-  t = time(NULL);
-  tmp = localtime(&t); /* or gmtime, if you want GMT^H^H^HUTC */
-  fprintf(fd, "%02d/%02d/%04d (%02d:%02d:%02d): ",
-          tmp->tm_mon+1, tmp->tm_mday, tmp->tm_year+1900,
-          tmp->tm_hour, tmp->tm_min, tmp->tm_sec);
-}
-
 JSBool js_log(JSContext *cx, unsigned argc, jsval *vp) {
   if (argc != 2) {
     JS_SET_RVAL(cx, vp, JSVAL_FALSE);
@@ -116,7 +105,15 @@ JSBool js_log(JSContext *cx, unsigned argc, jsval *vp) {
     char *output = JS_EncodeString(cx, JS_ValueToString(cx, jsoutput));
     FILE *fd = fopen(filename, "a+");
     if (fd != NULL) {
-      write_timestamp(fd);
+      struct tm *tmp;
+      time_t t;
+
+      t = time(NULL);
+      tmp = localtime(&t); /* or gmtime, if you want GMT^H^H^HUTC */
+      fprintf(fd, "%02d/%02d/%04d (%02d:%02d:%02d): ",
+              tmp->tm_mon+1, tmp->tm_mday, tmp->tm_year+1900,
+              tmp->tm_hour, tmp->tm_min, tmp->tm_sec);
+
       fwrite(output, 1, strlen(output), fd);
       fwrite("\n", 1, strlen("\n"), fd);
       fclose(fd);
