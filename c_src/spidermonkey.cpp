@@ -52,13 +52,6 @@ char *copy_string(const char *source) {
   return retval;
 }
 
-char *copy_jsstring(JSContext *cx, JSString *source) {
-  char *buf = JS_EncodeStringToUTF8(cx, source);
-  char *retval = copy_string(buf);
-  JS_free(cx, buf);
-  return retval;
-}
-
 void on_error(JSContext *context, const char *message, JSErrorReport *report) {
   if (report->flags & JSREPORT_EXCEPTION) {
     spidermonkey_error *sm_error = (spidermonkey_error *)ejs_alloc(sizeof(spidermonkey_error));
@@ -300,7 +293,9 @@ char *sm_eval(spidermonkey_vm *vm, const char *filename, const char *code, int h
       if (handle_retval) {
         if (JSVAL_IS_STRING(result)) {
           JSString *str = JS_ValueToString(vm->context, result);
-          retval = copy_jsstring(vm->context, str);
+          char *buf = JS_EncodeStringToUTF8(vm->context, str);
+          retval = copy_string(buf);
+          JS_free(vm->context, buf);
         }
         else {
           char *tmp = JS_EncodeStringToUTF8(vm->context, JS_ValueToString(vm->context, result));
