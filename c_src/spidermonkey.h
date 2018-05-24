@@ -16,8 +16,8 @@
 #ifndef __SPIDERMONKEY_INTERFACE_
 #define __SPIDERMONKEY_INTERFACE_
 
-#include "jsapi.h"
-#include "jsfriendapi.h"
+#include <jsapi.h>
+#include <jsfriendapi.h>
 
 typedef struct _spidermonkey_vm_t {
   JSRuntime* runtime;
