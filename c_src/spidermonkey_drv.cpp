@@ -43,7 +43,7 @@ typedef void (*asyncfun)(void *);
 
 
 /* Forward declarations */
-extern "C" { 
+extern "C" {
 
 static ErlDrvData start(ErlDrvPort port, char *cmd);
 static int init(void);
@@ -178,7 +178,7 @@ void run_js(void *jsargs) {
   driver_free(call_id);
 }
 
-extern "C" { 
+extern "C" {
 DRIVER_INIT(spidermonkey_drv) {
   return &spidermonkey_drv_entry;
 }
