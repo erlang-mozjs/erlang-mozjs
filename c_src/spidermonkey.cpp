@@ -193,9 +193,9 @@ void sm_stop(spidermonkey_vm *vm) {
     }
     driver_free(state);
   }
-  //JS_SetContextPrivate(vm->context, NULL);
+  JS_SetContextPrivate(vm->context, NULL);
   //JS_DestroyContext(vm->context);
-  JS_DestroyRuntime(vm->runtime);
+  //JS_DestroyRuntime(vm->runtime);
   driver_free(vm);
 }
 
