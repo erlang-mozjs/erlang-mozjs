@@ -19,15 +19,13 @@
 #include <jsapi.h>
 #include <jsfriendapi.h>
 #include <js/Conversions.h>
+#include <js/Value.h>
+#include <js/Initialization.h>
 
-typedef struct _spidermonkey_vm_t {
-  JSRuntime* runtime;
+struct spidermonkey_vm {
   JSContext* context;
   JS::RootedObject global;
-} spidermonkey_vm;
-
-/* Bytes to allocate before GC */
-#define MAX_GC_SIZE 1024 * 1024
+};
 
 spidermonkey_vm *sm_initialize(long thread_stack, long heap_size);
 
@@ -35,6 +33,6 @@ void sm_stop(spidermonkey_vm *vm);
 
 void sm_shutdown(void);
 
-char *sm_eval(spidermonkey_vm *vm, const char *filename, const char *code, int handle_retval);
+const char *sm_eval(spidermonkey_vm *vm, const char *filename, const char *code, int handle_retval);
 
 #endif

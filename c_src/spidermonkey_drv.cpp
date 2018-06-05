@@ -140,7 +140,7 @@ void run_js(void *jsargs) {
   char *data = args->orig_bytes;
   char *command = read_command(&data);
   char *call_id = read_string(&data);
-  char *result = NULL;
+  const char *result = NULL;
   if (strncmp(command, "ej", 2) == 0) {
     char *filename = read_string(&data);
     char *code = read_string(&data);
@@ -207,8 +207,9 @@ static ErlDrvData start(ErlDrvPort port, char *cmd) {
 
 static void stop(ErlDrvData handle) {
   spidermonkey_drv_t *dd = (spidermonkey_drv_t*) handle;
-  if(dd->vm != NULL) {
+  if(dd->vm) {
     sm_stop(dd->vm);
+    dd->vm = nullptr;
   }
   if (dd->shutdown) {
     sm_shutdown();
@@ -239,7 +240,7 @@ static void process(ErlDrvData handle, ErlIOVec *ev) {
     call_data->args = ev->binv[1];
     call_data->return_terms[0] = 0;
     call_data->return_term_count = 0;
-    call_data->return_string = NULL;
+    call_data->return_string = nullptr;
     driver_binary_inc_refc(call_data->args);
     ErlDrvPort port = dd->port;
     intptr_t port_ptr = (intptr_t) port;
