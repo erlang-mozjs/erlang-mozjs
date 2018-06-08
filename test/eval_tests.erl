@@ -110,8 +110,7 @@ error_test_() ->
        fun() ->
                P = test_util:get_thing(),
                ?assertMatch(ok, js:define(P, <<"function foo(x, y) { return true; };">>)),
-               {error, ErrorDesc} = js:eval(P, <<"foo(100, 200,);">>),
-               ?assert(verify_error(ErrorDesc)),
+               ?assertEqual({ok, true}, js:eval(P, <<"foo(100, 200,);">>)),
                erlang:unlink(P) end,
        fun() ->
                P = test_util:get_thing(),
