@@ -144,7 +144,7 @@ void run_js(void *jsargs) {
   if (strncmp(command, "ej", 2) == 0) {
     char *filename = read_string(&data);
     char *code = read_string(&data);
-    result = sm_eval(dd->vm, filename, code, 1);
+    result = dd->vm->sm_eval(filename, code, 1);
     if ((strncmp(result, "[{\"error\":\"notfound\"}]", 22) == 0) || (strncmp(result, "{\"error\"", 8) == 0)) {
         send_error_string_response(dd, call_data, call_id, result);
     }
@@ -157,7 +157,7 @@ void run_js(void *jsargs) {
   else if (strncmp(command, "dj", 2) == 0) {
     char *filename = read_string(&data);
     char *code = read_string(&data);
-    result = sm_eval(dd->vm, filename, code, 0);
+    result = dd->vm->sm_eval(filename, code, 0);
     if (result == NULL) {
       send_ok_response(dd, call_data, call_id);
     }
@@ -208,8 +208,8 @@ static ErlDrvData start(ErlDrvPort port, char *cmd) {
 static void stop(ErlDrvData handle) {
   spidermonkey_drv *dd = (spidermonkey_drv*) handle;
   if(dd->vm) {
-    sm_stop(dd->vm);
-    dd->vm = nullptr;
+    dd->vm->sm_stop();
+    //dd->vm = nullptr;
   }
   if (dd->shutdown) {
     sm_shutdown();
