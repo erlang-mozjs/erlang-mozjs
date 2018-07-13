@@ -21,23 +21,23 @@
 #include "spidermonkey.h"
 #include "driver_comm.h"
 
-typedef struct _spidermonkey_drv_t {
+struct spidermonkey_drv {
   ErlDrvPort port;
   spidermonkey_vm *vm;
   ErlDrvTermData atom_ok;
   ErlDrvTermData atom_error;
   ErlDrvTermData atom_unknown_cmd;
   int shutdown;
-} spidermonkey_drv_t;
+};
 
-typedef struct _js_call_t {
-  spidermonkey_drv_t *driver_data;
+struct js_call {
+  spidermonkey_drv *driver_data;
   ErlDrvBinary *args;
   ErlDrvTermData return_terms[20];
   char return_call_id[32];
   int return_term_count;
   const char *return_string;
-} js_call;
+};
 
 typedef void (*asyncfun)(void *);
 
@@ -76,7 +76,7 @@ static ErlDrvEntry spidermonkey_drv_entry = {
 };
 
 
-void send_immediate_ok_response(spidermonkey_drv_t *dd, const char *call_id) {
+void send_immediate_ok_response(spidermonkey_drv *dd, const char *call_id) {
   ErlDrvTermData terms[] = {ERL_DRV_BUF2BINARY, (ErlDrvTermData) call_id, strlen(call_id),
                             ERL_DRV_ATOM, dd->atom_ok,
                             ERL_DRV_TUPLE, 2};
@@ -92,7 +92,7 @@ void send_immediate_ok_response(spidermonkey_drv_t *dd, const char *call_id) {
          CD->return_term_count = sizeof(TERMS) / sizeof(TERMS[0]); \
     } while (0)
 
-void send_ok_response(spidermonkey_drv_t *dd, js_call *call_data,
+void send_ok_response(spidermonkey_drv *dd, js_call *call_data,
                       const char *call_id) {
   ErlDrvTermData terms[] = {ERL_DRV_BUF2BINARY,
                             (ErlDrvTermData) call_data->return_call_id,strlen(call_id),
@@ -101,7 +101,7 @@ void send_ok_response(spidermonkey_drv_t *dd, js_call *call_data,
   COPY_DATA(call_data, call_id, terms);
 }
 
-void send_error_string_response(spidermonkey_drv_t *dd, js_call *call_data,
+void send_error_string_response(spidermonkey_drv *dd, js_call *call_data,
                                 const char *call_id, const char *msg) {
   ErlDrvTermData terms[] = {ERL_DRV_BUF2BINARY,
                             (ErlDrvTermData) call_data->return_call_id,strlen(call_id),
@@ -112,7 +112,7 @@ void send_error_string_response(spidermonkey_drv_t *dd, js_call *call_data,
   call_data->return_string = msg;
 }
 
-void send_string_response(spidermonkey_drv_t *dd, js_call *call_data,
+void send_string_response(spidermonkey_drv *dd, js_call *call_data,
                           const char *call_id, const char *result) {
   ErlDrvTermData terms[] = {ERL_DRV_BUF2BINARY,
                             (ErlDrvTermData) call_data->return_call_id,strlen(call_id),
@@ -123,7 +123,7 @@ void send_string_response(spidermonkey_drv_t *dd, js_call *call_data,
   call_data->return_string = result;
 }
 
-void unknown_command(spidermonkey_drv_t *dd, js_call *call_data,
+void unknown_command(spidermonkey_drv *dd, js_call *call_data,
                      const char *call_id) {
   ErlDrvTermData terms[] = {ERL_DRV_BUF2BINARY,
                             (ErlDrvTermData) call_data->return_call_id,strlen(call_id),
@@ -135,7 +135,7 @@ void unknown_command(spidermonkey_drv_t *dd, js_call *call_data,
 
 void run_js(void *jsargs) {
   js_call *call_data = (js_call *) jsargs;
-  spidermonkey_drv_t *dd = call_data->driver_data;
+  spidermonkey_drv *dd = call_data->driver_data;
   ErlDrvBinary *args = call_data->args;
   char *data = args->orig_bytes;
   char *command = read_command(&data);
@@ -189,7 +189,7 @@ static int init(void) {
 }
 
 static ErlDrvData start(ErlDrvPort port, char *cmd) {
-  spidermonkey_drv_t *retval = (spidermonkey_drv_t *)ejs_alloc(sizeof(spidermonkey_drv_t));
+  spidermonkey_drv *retval = (spidermonkey_drv *)ejs_alloc(sizeof(spidermonkey_drv));
   retval->port = port;
   retval->shutdown = 0;
   retval->atom_ok = driver_mk_atom((char *) "ok");
@@ -206,7 +206,7 @@ static ErlDrvData start(ErlDrvPort port, char *cmd) {
 }
 
 static void stop(ErlDrvData handle) {
-  spidermonkey_drv_t *dd = (spidermonkey_drv_t*) handle;
+  spidermonkey_drv *dd = (spidermonkey_drv*) handle;
   if(dd->vm) {
     sm_stop(dd->vm);
     dd->vm = nullptr;
@@ -218,7 +218,7 @@ static void stop(ErlDrvData handle) {
 }
 
 static void process(ErlDrvData handle, ErlIOVec *ev) {
-  spidermonkey_drv_t *dd = (spidermonkey_drv_t *) handle;
+  spidermonkey_drv *dd = (spidermonkey_drv *) handle;
 
   char *data = ev->binv[1]->orig_bytes;
   char *command = read_command(&data);
@@ -253,7 +253,7 @@ static void process(ErlDrvData handle, ErlIOVec *ev) {
 static void
 ready_async(ErlDrvData handle, ErlDrvThreadData async_data)
 {
-  spidermonkey_drv_t *dd = (spidermonkey_drv_t *) handle;
+  spidermonkey_drv *dd = (spidermonkey_drv *) handle;
   js_call *call_data = (js_call *) async_data;
 
   erl_drv_output_term(driver_mk_port(dd->port),
