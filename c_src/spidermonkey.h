@@ -24,6 +24,68 @@
 
 extern "C" void erts_exit(int n, const char*, ...);
 
+#include <string>
+class spidermonkey_state {
+  public:
+    int branch_count = 0;
+    bool terminate = false;
+    bool error = false;
+    spidermonkey_state() {};
+    ~spidermonkey_state()
+    {
+      free_error();
+    };
+    void replace_error(const char* m = "undefined error", unsigned int l = 0, const char* os = "<unknown>")
+    {
+      free_error();
+
+      msg = new std::string(m);
+      lineno = l;
+      offending_source = new std::string(os);
+      error = true;
+    };
+    char* error_to_json()
+    {
+      std::string *escaped_source = new std::string();
+      bool escaped = false;
+      for(char c : *offending_source) {
+        if(c =='\\') {
+          *escaped_source += c;
+          escaped = true;
+        }
+        else {
+          if((c == '"') && !escaped)
+            *escaped_source += "\\\"";
+          else
+            *escaped_source += c;
+          escaped = false;
+        }
+      }
+
+      char fmt[] = "{\"error\": {\"lineno\": %d, \"message\": \"%s\", \"source\": \"%s\"}}";
+      size_t size = escaped_source->length() + msg->length() + strlen(fmt);
+      char *retval = new char[size];
+
+      snprintf(retval, size, fmt, lineno, msg->c_str(), escaped_source->c_str());
+      delete escaped_source;
+
+      free_error();
+      return retval;
+    };
+  private:
+    unsigned int lineno = 0;
+    std::string *msg = nullptr;
+    std::string *offending_source = nullptr;
+    void free_error()
+    {
+      if(error){
+        error = false;
+        delete msg;
+        delete offending_source;
+      }
+    };
+};
+
 class spidermonkey_vm {
   public:
     JSContext* context;
@@ -35,7 +97,6 @@ class spidermonkey_vm {
                       JSClass* global_class,
                       JS::WarningReporter on_error,
                       JSInterruptCallback on_branch,
-                      void* state,
                       const char* funname, JSNative funptr)
     {
       uint32_t gc_size = (uint32_t) heap_size * 0.25;
@@ -57,6 +118,8 @@ class spidermonkey_vm {
 
       JS::CompartmentOptions options;
       options.behaviors().setVersion(JSVERSION_LATEST);
+
+      spidermonkey_state *state = new spidermonkey_state();
 
       // FIXME FIXME FIXME
       JS::RootedObject g(context, JS_NewGlobalObject(context, global_class, nullptr, JS::FireOnNewGlobalHook, options));

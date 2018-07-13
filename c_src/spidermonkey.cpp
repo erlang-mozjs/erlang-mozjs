@@ -20,9 +20,6 @@
 
 #include "driver_comm.h"
 #include "spidermonkey.h"
-
-#include <string>
-
 void* operator new(size_t size)
 {
   void *p = driver_alloc((ErlDrvSizeT)size);
@@ -38,66 +35,6 @@ void operator delete(void* ptr) noexcept
   driver_free(ptr);
 };
 
-class spidermonkey_state {
-  public:
-    int branch_count = 0;
-    bool terminate = false;
-    bool error = false;
-    spidermonkey_state() {};
-    ~spidermonkey_state()
-    {
-      free_error();
-    };
-    void replace_error(const char* m = "undefined error", unsigned int l = 0, const char* os = "<unknown>")
-    {
-      free_error();
-
-      msg = new std::string(m);
-      lineno = l;
-      offending_source = new std::string(os);
-      error = true;
-    };
-    char* error_to_json()
-    {
-      std::string *escaped_source = new std::string();
-      bool escaped = false;
-      for(char c : *offending_source) {
-        if(c =='\\') {
-          *escaped_source += c;
-          escaped = true;
-        }
-        else {
-          if((c == '"') && !escaped)
-            *escaped_source += "\\\"";
-          else
-            *escaped_source += c;
-          escaped = false;
-        }
-      }
-
-      char fmt[] = "{\"error\": {\"lineno\": %d, \"message\": \"%s\", \"source\": \"%s\"}}";
-      size_t size = escaped_source->length() + msg->length() + strlen(fmt);
-      char *retval = new char[size];
-
-      snprintf(retval, size, fmt, lineno, msg->c_str(), escaped_source->c_str());
-      delete escaped_source;
-
-      free_error();
-      return retval;
-    };
-  private:
-    unsigned int lineno = 0;
-    std::string *msg = nullptr;
-    std::string *offending_source = nullptr;
-    void free_error()
-    {
-      if(error){
-        error = false;
-        delete msg;
-        delete offending_source;
-      }
-    };
-};
 
 /* The class of the global object. */
 static JSClass global_class = {
@@ -172,15 +109,13 @@ bool js_log(JSContext *cx, unsigned argc, JS::Value *vp) {
 }
 
 spidermonkey_vm *sm_initialize(long thread_stack, long heap_size) {
-  spidermonkey_state *state = new spidermonkey_state();
-
   if(!JS_IsInitialized())
     JS_Init();
 
 /* Bytes to allocate before GC */
 #define MAX_GC_SIZE 1024 * 1024
 
-  spidermonkey_vm *vm = new spidermonkey_vm(MAX_GC_SIZE, thread_stack, heap_size, &global_class, on_error, on_branch, state, "ejsLog", (JSNative) js_log);
+  spidermonkey_vm *vm = new spidermonkey_vm(MAX_GC_SIZE, thread_stack, heap_size, &global_class, on_error, on_branch, "ejsLog", (JSNative) js_log);
 
   return vm;
 }
