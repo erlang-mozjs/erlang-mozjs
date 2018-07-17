@@ -226,7 +226,7 @@ static void process(ErlDrvData handle, ErlIOVec *ev) {
     }
     thread_stack = thread_stack * (1024 * 1024);
     int heap_size = read_int32(&data) * (1024 * 1024);
-    dd->vm = sm_initialize(thread_stack, heap_size);
+    dd->vm = new spidermonkey_vm((size_t)thread_stack, (uint32_t)heap_size);
     send_immediate_ok_response(dd, call_id);
     driver_free(call_id);
   }

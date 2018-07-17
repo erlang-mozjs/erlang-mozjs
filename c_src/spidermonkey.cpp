@@ -18,7 +18,6 @@
 #include <time.h>
 #include <erl_driver.h>
 
-#include "driver_comm.h"
 #include "spidermonkey.h"
 void* operator new(size_t size)
 {
@@ -108,16 +107,48 @@ bool js_log(JSContext *cx, unsigned argc, JS::Value *vp) {
   return true;
 }
 
-spidermonkey_vm *sm_initialize(long thread_stack, long heap_size) {
-  if(!JS_IsInitialized())
-    JS_Init();
+spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
+{
 
 /* Bytes to allocate before GC */
 #define MAX_GC_SIZE 1024 * 1024
 
-  spidermonkey_vm *vm = new spidermonkey_vm(MAX_GC_SIZE, thread_stack, heap_size, &global_class, on_error, on_branch, "ejsLog", (JSNative) js_log);
+      uint32_t gc_size = (uint32_t) heap_size * 0.25;
+      context = JS_NewContext(MAX_GC_SIZE);
 
-  return vm;
+      JS::InitSelfHostedCode(context);
+
+      JS_SetNativeStackQuota(context, thread_stack);
+      JS_SetGCParameter(context, JSGC_MAX_BYTES, heap_size);
+      JS_SetGCParameter(context, JSGC_MAX_MALLOC_BYTES, gc_size);
+
+      JS::ContextOptionsRef(context)
+          .setIon(true)
+          .setBaseline(true)
+          .setAsmJS(true)
+    .setExtraWarnings(true);
+
+      JS_BeginRequest(context);
+
+      JS::CompartmentOptions options;
+      options.behaviors().setVersion(JSVERSION_LATEST);
+
+      spidermonkey_state *state = new spidermonkey_state();
+
+      // FIXME FIXME FIXME
+      JS::RootedObject g(context, JS_NewGlobalObject(context, &global_class, nullptr, JS::FireOnNewGlobalHook, options));
+      global = g;
+
+      JSAutoCompartment ac(context, g);
+      JS_InitStandardClasses(context, g);
+      JS_InitReflectParse(context, g);
+      JS_DefineDebuggerObject(context, g);
+
+      JS::SetWarningReporter(context, on_error);
+      JS_AddInterruptCallback(context, on_branch);
+      JS_SetContextPrivate(context, state);
+      JS_DefineFunction(context, g, "ejsLog", (JSNative) js_log, 0, 0);
+      JS_EndRequest(context);
 }
 
 void spidermonkey_vm::sm_stop() {
@@ -139,9 +170,7 @@ void spidermonkey_vm::sm_stop() {
   //Now we should be free to proceed with
   //freeing up memory without worrying about
   //crashing the VM.
-  //delete state; // FIXME FIXME FIXME
-
-  //delete vm; // FIXME FIXME FIXME
+  delete state; // FIXME FIXME FIXME
 }
 
 void sm_poweron(void) {
