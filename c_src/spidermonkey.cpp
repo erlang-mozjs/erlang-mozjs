@@ -37,7 +37,7 @@ void operator delete(void* ptr) noexcept
 
 
 /* The class of the global object. */
-static JSClass global_class = {
+static constexpr JSClass global_class = {
     "global", JSCLASS_GLOBAL_FLAGS,
     nullptr, nullptr, nullptr, nullptr
 };
