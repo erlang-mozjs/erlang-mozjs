@@ -144,6 +144,9 @@ void spidermonkey_vm::sm_stop() {
   //delete vm; // FIXME FIXME FIXME
 }
 
+void sm_poweron(void) {
+  JS_Init();
+}
 void sm_shutdown(void) {
   JS_ShutDown();
 }

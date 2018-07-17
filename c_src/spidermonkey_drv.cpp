@@ -27,7 +27,6 @@ struct spidermonkey_drv {
   ErlDrvTermData atom_ok;
   ErlDrvTermData atom_error;
   ErlDrvTermData atom_unknown_cmd;
-  int shutdown;
 };
 
 struct js_call {
@@ -47,6 +46,7 @@ extern "C" {
 
 static ErlDrvData start(ErlDrvPort port, char *cmd);
 static int init(void);
+static void finish(void);
 static void stop(ErlDrvData handle);
 static void process(ErlDrvData handle, ErlIOVec *ev);
 static void ready_async(ErlDrvData handle, ErlDrvThreadData async_data);
@@ -60,7 +60,7 @@ static ErlDrvEntry spidermonkey_drv_entry = {
     NULL,                             /* ready_input */
     NULL,                             /* ready_output */
     (char *) "erlang_js_drv",         /* the name of the driver */
-    NULL,                             /* finish */
+    finish,                           /* finish */
     NULL,                             /* handle */
     NULL,                             /* control */
     NULL,                             /* timeout */
@@ -167,10 +167,6 @@ void run_js(void *jsargs) {
     driver_free(filename);
     driver_free(code);
   }
-  else if (strncmp(command, "sd", 2) == 0) {
-    dd->shutdown = 1;
-    send_ok_response(dd, call_data, call_id);
-  }
   else {
     unknown_command(dd, call_data, call_id);
   }
@@ -185,13 +181,18 @@ DRIVER_INIT(spidermonkey_drv) {
 }
 
 static int init(void) {
+  sm_poweron();
   return 0;
+}
+
+static void finish(void) {
+  sm_shutdown();
+  return;
 }
 
 static ErlDrvData start(ErlDrvPort port, char *cmd) {
   spidermonkey_drv *retval = (spidermonkey_drv *)ejs_alloc(sizeof(spidermonkey_drv));
   retval->port = port;
-  retval->shutdown = 0;
   retval->atom_ok = driver_mk_atom((char *) "ok");
   retval->atom_error = driver_mk_atom((char *) "error");
   retval->atom_unknown_cmd = driver_mk_atom((char *) "unknown_command");
@@ -207,13 +208,8 @@ static ErlDrvData start(ErlDrvPort port, char *cmd) {
 
 static void stop(ErlDrvData handle) {
   spidermonkey_drv *dd = (spidermonkey_drv*) handle;
-  if(dd->vm) {
-    dd->vm->sm_stop();
-    //dd->vm = nullptr;
-  }
-  if (dd->shutdown) {
-    sm_shutdown();
-  }
+  dd->vm->sm_stop();
+  delete dd->vm;
   driver_free(dd);
 }
 

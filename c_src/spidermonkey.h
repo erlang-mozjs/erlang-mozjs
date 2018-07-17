@@ -166,6 +166,7 @@ class spidermonkey_vm {
 };
 
 spidermonkey_vm *sm_initialize(long thread_stack, long heap_size);
+void sm_poweron();
 
 void sm_shutdown(void);
 
