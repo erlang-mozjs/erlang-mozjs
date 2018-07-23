@@ -111,8 +111,9 @@ error_test_() ->
                mozjs_stop(P) end,
        fun() ->
                P = mozjs_get_handle(),
-               js:define(P, <<"function foo() { return [{\"error\":\"notfound\"}]; }">>),
-               ?assertMatch({error, <<"[{\"error\":\"notfound\"}]">>}, js:call(P, <<"foo">>, [])),
+               js:define(P, <<"function foo() { throw new Error(\"notfound\"); };">>),
+               {error, ErrorDesc} = js:call(P, <<"foo">>, []),
+               ?assert(verify_error(ErrorDesc)),
                mozjs_stop(P) end,
        fun() ->
                P = mozjs_get_handle(),

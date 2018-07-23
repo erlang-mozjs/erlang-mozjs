@@ -92,15 +92,22 @@ static ERL_NIF_TERM mozjs_eval(ErlNifEnv* env, int argc,
     int handle_retval = 0;
     enif_get_int(env, argv[3], &handle_retval);
 
-    const char* retval = handle->vm->sm_eval(filename, code, handle_retval);
+    char* output = nullptr;
+    bool retval = handle->vm->sm_eval(filename, code, &output, handle_retval);
 
     delete[] filename;
     delete[] code;
 
-    if (retval) {
-        ERL_NIF_TERM result = enif_make_string(env, retval, ERL_NIF_LATIN1);
-        delete[] retval;
-        return enif_make_tuple2(env, enif_make_atom(env, "ok"), result);
+    if (output) {
+        ErlNifBinary result;
+        enif_alloc_binary(strlen(output), &result);
+        memcpy((char*)result.data, output, result.size);
+        delete[] output;
+
+	if (retval)
+	    return enif_make_tuple2(env, enif_make_atom(env, "ok"), enif_make_binary(env, &result));
+	else
+	    return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_binary(env, &result));
     }
 
     return enif_make_atom(env, "ok");

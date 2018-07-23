@@ -126,7 +126,7 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
           .setIon(true)
           .setBaseline(true)
           .setAsmJS(true)
-    .setExtraWarnings(true);
+          .setExtraWarnings(true);
 
       JS_BeginRequest(context);
 
@@ -170,7 +170,7 @@ void spidermonkey_vm::sm_stop() {
   //Now we should be free to proceed with
   //freeing up memory without worrying about
   //crashing the VM.
-  delete state; // FIXME FIXME FIXME
+  delete state;
 }
 
 void sm_poweron(void) {
@@ -180,11 +180,11 @@ void sm_shutdown(void) {
   JS_ShutDown();
 }
 
-const char* spidermonkey_vm::sm_eval(const char *filename, const char *code, int handle_retval) {
+bool spidermonkey_vm::sm_eval(const char *filename, const char *code, char** output, int handle_retval) {
   if (code == nullptr)
-      return nullptr;
+      return false;
 
-  char *retval = nullptr;
+  bool retval = true;
 
   JS_BeginRequest(this->context);
 
@@ -198,8 +198,44 @@ const char* spidermonkey_vm::sm_eval(const char *filename, const char *code, int
           .setFileAndLine(filename, 1);
 
   JS::RootedScript script(this->context);
-  bool ret = JS::Compile(this->context, options, code, strlen(code), &script);
-  if (!ret && JS_IsExceptionPending(this->context)) {
+  if (!JS::Compile(this->context, options, code, strlen(code), &script))
+    this->check_js_exception();
+
+  spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
+  if (state->error) {
+    retval = false;
+    *output = state->error_to_json();
+    JS_SetContextPrivate(this->context, state);
+  }
+  else {
+    JS::RootedValue result(this->context);
+    JS_ExecuteScript(this->context, script, &result);
+    this->check_js_exception();
+    state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
+    if (state->error) {
+      retval = false;
+      *output = state->error_to_json();
+      JS_SetContextPrivate(this->context, state);
+    }
+    else {
+      if (handle_retval) {
+        JS::RootedString str(this->context, JS::ToString(this->context, result));
+        char *buf = JS_EncodeStringToUTF8(this->context, str);
+        size_t size = strlen(buf);
+        *output = new char[size + 1];
+        strncpy(*output, buf, size + 1);
+        JS_free(this->context, buf);
+      }
+    }
+  }
+  JS_EndRequest(this->context);
+
+  return retval;
+}
+
+void spidermonkey_vm::check_js_exception()
+{
+  if (JS_IsExceptionPending(this->context)) {
     JS::RootedValue exception_v(this->context);
     JS_GetPendingException(this->context, &exception_v);
     JS::RootedObject exception(this->context, &exception_v.toObject());
@@ -208,46 +244,5 @@ const char* spidermonkey_vm::sm_eval(const char *filename, const char *code, int
     on_error(this->context, report);
     JS_ClearPendingException(this->context);
   }
-
-  spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
-  if (state->error) {
-    retval = state->error_to_json();
-    JS_SetContextPrivate(this->context, state);
-  }
-  else {
-    JS::RootedValue result(this->context);
-    JS_ExecuteScript(this->context, script, &result);
-    state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
-    if (state->error) {
-      retval = state->error_to_json();
-      JS_SetContextPrivate(this->context, state);
-    }
-    else {
-      if (handle_retval) {
-        JS::RootedString str(this->context, JS::ToString(this->context, result));
-        char *buf = JS_EncodeStringToUTF8(this->context, str);
-        if (result.isString()) {
-          size_t size = strlen(buf);
-          retval = new char[size + 1];
-          strncpy(retval, buf, size + 1);
-        }
-        else {
-	  if(strcmp(buf, "undefined") == 0) {
-            state->replace_error("Expression returned undefined");
-            retval = state->error_to_json();
-            JS_SetContextPrivate(this->context, state);
-	  }
-	  else {
-            state->replace_error("non-JSON return value");
-            retval = state->error_to_json();
-            JS_SetContextPrivate(this->context, state);
-	  }
-        }
-	JS_free(this->context, buf);
-      }
-    }
-  }
-  JS_EndRequest(this->context);
-
-  return retval;
+  return;
 }

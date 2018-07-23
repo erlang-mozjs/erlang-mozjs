@@ -97,13 +97,14 @@ class spidermonkey_vm {
     {
       //delete global;
       if(context){
+	// FIXME FIXME FIXME
         //JS_DestroyContext(context);
         //delete context;
         context = nullptr;
       }
     };
 
-    const char *sm_eval(const char *filename, const char *code, int handle_retval);
+    bool sm_eval(const char *filename, const char *code, char** output, int handle_retval);
     void sm_stop();
     void* operator new(size_t size)
     {
@@ -119,6 +120,9 @@ class spidermonkey_vm {
     {
       enif_free(ptr);
     };
+
+  private:
+    void check_js_exception();
 };
 
 void sm_poweron();
