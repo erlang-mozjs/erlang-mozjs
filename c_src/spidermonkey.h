@@ -24,6 +24,7 @@
 
 extern "C" void erts_exit(int n, const char*, ...);
 
+#include "erl_nif.h"
 #include <string>
 
 class spidermonkey_state {
@@ -106,7 +107,7 @@ class spidermonkey_vm {
     void sm_stop();
     void* operator new(size_t size)
     {
-      void *p = driver_alloc((ErlDrvSizeT)size);
+      void *p = enif_alloc(size);
       if (p)
         return p;
 
@@ -116,7 +117,7 @@ class spidermonkey_vm {
 
     void operator delete(void* ptr) noexcept
     {
-      driver_free(ptr);
+      enif_free(ptr);
     };
 };
 

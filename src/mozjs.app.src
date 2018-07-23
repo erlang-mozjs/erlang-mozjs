@@ -1,0 +1,8 @@
+% -*- mode: erlang -*-
+{application, mozjs,
+ [{description,  "Interface between BEAM and MozJS"},
+  {vsn,          "0.0.1"},
+  {modules,      []},
+  {registered,   []},
+  {applications, [kernel, stdlib]},
+  {mod, {mozjs, []}}]}.

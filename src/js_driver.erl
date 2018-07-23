@@ -32,19 +32,7 @@
 %% @spec load_driver() -> true | false
 %% @doc Attempt to load the Javascript driver
 load_driver() ->
-    {ok, Drivers} = erl_ddll:loaded_drivers(),
-    case lists:member(?DRIVER_NAME, Drivers) of
-        false ->
-            case erl_ddll:load(priv_dir(), ?DRIVER_NAME) of
-                ok ->
-                    true;
-                {error, Error} ->
-                    error_logger:error_msg("Error loading ~p: ~p~n", [?DRIVER_NAME, erl_ddll:format_error(Error)]),
-                    false
-            end;
-        true ->
-            true
-    end.
+   true.
 
 %% @spec new() -> {ok, port()} | {error, atom()} | {error, any()}
 %% @doc Create a new Javascript VM instance and preload Douglas Crockford's
@@ -72,8 +60,7 @@ new(ThreadStackSize, HeapSize) ->
 %% @doc Create a new Javascript VM instance. The function arguments control how the VM instance is initialized.
 %% User supplied initializers must return true or false.
 new(ThreadStackSize, HeapSize, no_json) ->
-    Port = open_port({spawn, ?DRIVER_NAME}, [binary]),
-    _ = call_driver(Port, "ij", [ThreadStackSize, HeapSize], 5000),
+    {ok, Port} = mozjs_nif:sm_init(ThreadStackSize, HeapSize),
     {ok, Port};
 new(ThreadStackSize, HeapSize, Initializer) when is_function(Initializer) ->
     {ok, Port} = new(ThreadStackSize, HeapSize),
@@ -99,14 +86,13 @@ new(ThreadStackSize, HeapSize, {InitMod, InitFun}) ->
 %% @spec destroy(port()) -> ok
 %% @doc Destroys a Javascript VM instance
 destroy(Ctx) ->
-    port_close(Ctx).
+    mozjs_nif:sm_stop(Ctx).
 
 %% @spec shutdown(port()) -> ok
 %% @doc Destroys a Javascript VM instance and shuts down the underlying Javascript infrastructure.
 %% NOTE: No new VMs can be created after this call is made!
-shutdown(Ctx) ->
-    _ = call_driver(Ctx, "sd", [], 60000),
-    port_close(Ctx).
+shutdown(_) ->
+    ok.
 
 %% @spec define_js(port(), binary()) -> ok | {error, any()}
 %% @doc Define a Javascript expression:
@@ -125,9 +111,9 @@ define_js(Ctx, Js, Timeout) when is_binary(Js) ->
 %% @doc Define a Javascript expression:
 %% js_driver:define(Port, &lt;&lt;var blah = new Wubba();"&gt;&gt;).
 %% Note: Filename is used only as a label for error reporting.
-define_js(Ctx, FileName, Js, Timeout) when is_binary(FileName),
+define_js(Ctx, FileName, Js, _Timeout) when is_binary(FileName),
                                            is_binary(Js) ->
-    case call_driver(Ctx, "dj", [FileName, Js], Timeout) of
+    case mozjs_nif:sm_eval(Ctx, FileName, Js, 0) of
         {error, ErrorJson} when is_binary(ErrorJson) ->
             {struct, [{<<"error">>, {struct, Error}}]} = mochijson2:decode(ErrorJson),
             {error, Error};
@@ -146,8 +132,8 @@ eval_js(Ctx, Js) ->
 eval_js(Ctx, {file, FileName}, Timeout) ->
     {ok, File} = file:read_file(FileName),
     eval_js(Ctx, File, Timeout);
-eval_js(Ctx, Js, Timeout) when is_binary(Js) ->
-    case call_driver(Ctx, "ej", [<<"<unnamed>">>, jsonify(Js)], Timeout) of
+eval_js(Ctx, Js, _Timeout) when is_binary(Js) ->
+    case mozjs_nif:sm_eval(Ctx, <<"<unnamed>">>, jsonify(Js), 1) of
         {ok, Result} ->
             {ok, mochijson2:decode(Result)};
         {error, ErrorJson} when is_binary(ErrorJson) ->
@@ -177,33 +163,12 @@ jsonify(Code) when is_binary(Code) ->
 priv_dir() ->
     %% Hacky workaround to handle running from a standard app directory
     %% and .ez package
-    case code:priv_dir(erlang_js) of
+    case code:priv_dir('erlang-mozjs') of
         {error, bad_name} ->
             filename:join([filename:dirname(code:which(?MODULE)), "..", "priv"]);
         Dir ->
             Dir
     end.
-
-%% @private
-call_driver(Ctx, Command, Args, Timeout) ->
-    CallToken = make_call_token(),
-    Marshalled = js_drv_comm:pack(Command, [CallToken] ++ Args),
-    port_command(Ctx, Marshalled),
-    Result = receive
-                 {CallToken, ok} ->
-                     ok;
-                 {CallToken, ok, R} ->
-                     {ok, R};
-                 {CallToken, error, Error} ->
-                     {error, Error}
-             after Timeout ->
-                     {error, timeout}
-             end,
-    Result.
-
-%% @private
-make_call_token() ->
-    list_to_binary(integer_to_list(erlang:phash2(erlang:make_ref()))).
 
 %% @private
 json_converter() ->
