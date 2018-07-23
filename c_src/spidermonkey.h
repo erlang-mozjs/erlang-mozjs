@@ -43,7 +43,10 @@ class spidermonkey_state {
 
       msg = new std::string(m);
       lineno = l;
-      offending_source = new std::string(os);
+      if(os)
+        offending_source = new std::string(os);
+      else
+        offending_source = new std::string("<internally_generated>");
       error = true;
     };
     char* error_to_json()
