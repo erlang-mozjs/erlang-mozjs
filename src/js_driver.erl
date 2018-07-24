@@ -115,7 +115,7 @@ define_js(Ctx, FileName, Js, _Timeout) when is_binary(FileName),
                                            is_binary(Js) ->
     case mozjs_nif:sm_eval(Ctx, FileName, Js, 0) of
         {error, ErrorJson} when is_binary(ErrorJson) ->
-            {struct, [{<<"error">>, {struct, Error}}]} = mochijson2:decode(ErrorJson),
+            {struct, Error} = mochijson2:decode(ErrorJson),
             {error, Error};
         {error, Error} ->
             {error, Error};
@@ -138,7 +138,7 @@ eval_js(Ctx, Js, _Timeout) when is_binary(Js) ->
             {ok, mochijson2:decode(Result)};
         {error, ErrorJson} when is_binary(ErrorJson) ->
             case mochijson2:decode(ErrorJson) of
-                {struct, [{<<"error">>, {struct, Error}}]} ->
+                {struct, Error} ->
                     {error, Error};
                 _ ->
                     {error, ErrorJson}

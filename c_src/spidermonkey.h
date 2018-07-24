@@ -67,7 +67,7 @@ class spidermonkey_state {
         }
       }
 
-      char fmt[] = "{\"error\": {\"lineno\": %d, \"message\": \"%s\", \"source\": \"%s\"}}";
+      char fmt[] = "{\"lineno\": %d, \"message\": \"%s\", \"source\": \"%s\"}";
       size_t size = escaped_source->length() + msg->length() + strlen(fmt);
       char *retval = new char[size];
 
