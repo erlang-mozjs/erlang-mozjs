@@ -3,21 +3,21 @@
 
    [[http://travis-ci.org/basho/erlang_js][Travis-CI]] :: [[https://secure.travis-ci.org/basho/erlang_js.png]]
 
-   =erlang_js= is a linked-in driver, API, and OTP application that
+   =erlang_js= is a NIF library, API, and OTP application that
    embeds Mozilla's Spidermonkey Javascript Virtual Machine in
    Erlang. Originally created to facilitate usage of Riak's MapReduce
    by non-Erlang programmers, it supports multiple concurrent
    Javascript VMs, runtime evaluation of Javascript code, and
    invocation of Javascript functions.
 
-   =erlang_js= builds and executes only on Unix-based platforms,
-   including Linux, Mac OS/X, and Solaris. It includes version 1.8.0
-   of Spidermonkey and Douglas Crockford's =json2.js= JSON
-   parser. More information about the features available to Javascript
-   inside =erlang_js= are detailed on the [[https://developer.mozilla.org/en/JavaScript/Reference][Mozilla Developer Center]].
+   =erlang_js= builds and executes only on Unix-based platforms, including
+   Linux, Mac OS/X, and Solaris. It requires Spidermonkey 52 and includes Douglas
+   Crockford's =json2.js= JSON parser. More information about the features
+   available to Javascript inside =erlang_js= are detailed on the
+   [[https://developer.mozilla.org/en/JavaScript/Reference][Mozilla Developer Center]].
 
 ** Quick Start
-   You must have [[http://erlang.org/download.html][Erlang/OTP R13B04]] or later and a GNU-style build
+   You must have [[http://erlang.org/download.html][Erlang/OTP R13B04]] or later and a GNU-style make
    system to compile and run =erlang_js=.
 
 #+BEGIN_SRC shell
