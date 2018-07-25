@@ -34,7 +34,6 @@ void operator delete(void* ptr) noexcept
   driver_free(ptr);
 };
 
-
 /* The class of the global object. */
 static constexpr JSClass global_class = {
     "global", JSCLASS_GLOBAL_FLAGS,
@@ -184,8 +183,6 @@ bool spidermonkey_vm::sm_eval(const char *filename, const char *code, char** out
   if (code == nullptr)
       return false;
 
-  bool retval = true;
-
   JS_BeginRequest(this->context);
 
   JSAutoCompartment ac(this->context, this->global);
@@ -200,37 +197,36 @@ bool spidermonkey_vm::sm_eval(const char *filename, const char *code, char** out
   JS::RootedScript script(this->context);
   if (!JS::Compile(this->context, options, code, strlen(code), &script))
     this->check_js_exception();
-
   spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
   if (state->error) {
-    retval = false;
     *output = state->error_to_json();
     JS_SetContextPrivate(this->context, state);
+    JS_EndRequest(this->context);
+    return false;
   }
-  else {
-    JS::RootedValue result(this->context);
-    JS_ExecuteScript(this->context, script, &result);
-    this->check_js_exception();
-    state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
-    if (state->error) {
-      retval = false;
-      *output = state->error_to_json();
-      JS_SetContextPrivate(this->context, state);
-    }
-    else {
-      if (handle_retval) {
-        JS::RootedString str(this->context, JS::ToString(this->context, result));
-        char *buf = JS_EncodeStringToUTF8(this->context, str);
-        size_t size = strlen(buf);
-        *output = new char[size + 1];
-        strncpy(*output, buf, size + 1);
-        JS_free(this->context, buf);
-      }
-    }
+
+  JS::RootedValue result(this->context);
+  JS_ExecuteScript(this->context, script, &result);
+  this->check_js_exception();
+  state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
+  if (state->error) {
+    *output = state->error_to_json();
+    JS_SetContextPrivate(this->context, state);
+    JS_EndRequest(this->context);
+    return false;
+  }
+
+  if (handle_retval) {
+    JS::RootedString str(this->context, JS::ToString(this->context, result));
+    char *buf = JS_EncodeStringToUTF8(this->context, str);
+    size_t size = strlen(buf);
+    *output = new char[size + 1];
+    strncpy(*output, buf, size + 1);
+    JS_free(this->context, buf);
   }
   JS_EndRequest(this->context);
 
-  return retval;
+  return true;
 }
 
 void spidermonkey_vm::check_js_exception()
