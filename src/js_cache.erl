@@ -30,7 +30,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {cache=gb_trees:empty()}).
+-record(state, {cache=#{}}).
 
 %% @private
 start_link() ->
@@ -57,7 +57,7 @@ init([]) ->
 
 % @private
 handle_call({fetch, Key}, _From, #state{cache=Cache}=State) ->
-    Result = case gb_trees:lookup(Key, Cache) of
+    Result = case maps:find(Key, Cache) of
                  {value, Value} ->
                      Value;
                  Other ->
@@ -71,11 +71,11 @@ handle_call(_Request, _From, State) ->
 
 % @private
 handle_cast({store, Key, Value}, #state{cache=Cache}=State) ->
-    {noreply, State#state{cache=gb_trees:enter(Key, Value, Cache)}};
+    {noreply, State#state{cache=maps:put(Key, Value, Cache)}};
 
 % @private
 handle_cast({delete, Key}, #state{cache=Cache}=State) ->
-    {noreply, State#state{cache=gb_trees:delete(Key, Cache)}};
+    {noreply, State#state{cache=maps:remove(Key, Cache)}};
 
 % @private
 handle_cast(_Msg, State) ->
