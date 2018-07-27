@@ -150,6 +150,7 @@ priv_dir() ->
 
 %% @private
 json_converter() ->
+    is_pid(erlang:whereis(js_cache)) orelse js_cache:start_link(),
     FileName = filename:join([priv_dir(), "json2.js"]),
     case js_cache:fetch(FileName) of
         none ->
