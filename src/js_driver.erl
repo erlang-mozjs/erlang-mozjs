@@ -23,16 +23,8 @@
 -define(DEFAULT_HEAP_SIZE, 8). %% MB
 -define(DEFAULT_THREAD_STACK, 16). %% MB
 
--export([load_driver/0, new/0, new/2, new/3, destroy/1, shutdown/1]).
--export([define_js/2, define_js/3, define_js/4, eval_js/2, eval_js/3]).
-
--define(SCRIPT_TIMEOUT, 5000).
--define(DRIVER_NAME, "erlang_js_drv").
-
-%% @spec load_driver() -> true | false
-%% @doc Attempt to load the Javascript driver
-load_driver() ->
-   true.
+-export([new/0, new/2, new/3, destroy/1]).
+-export([define_js/2, define_js/3, eval_js/2]).
 
 %% @spec new() -> {ok, port()} | {error, atom()} | {error, any()}
 %% @doc Create a new Javascript VM instance and preload Douglas Crockford's
@@ -47,7 +39,7 @@ new() ->
 new(ThreadStackSize, HeapSize) ->
     {ok, Port} = new(ThreadStackSize, HeapSize, no_json),
     %% Load json converter for use later
-    case define_js(Port, <<"json2.js">>, json_converter(), ?SCRIPT_TIMEOUT) of
+    case define_js(Port, <<"json2.js">>, json_converter()) of
         ok ->
             {ok, Port};
         {error, Reason} ->
@@ -88,30 +80,20 @@ new(ThreadStackSize, HeapSize, {InitMod, InitFun}) ->
 destroy(Ctx) ->
     mozjs_nif:sm_stop(Ctx).
 
-%% @spec shutdown(port()) -> ok
-%% @doc Destroys a Javascript VM instance and shuts down the underlying Javascript infrastructure.
-%% NOTE: No new VMs can be created after this call is made!
-shutdown(_) ->
-    ok.
-
 %% @spec define_js(port(), binary()) -> ok | {error, any()}
 %% @doc Define a Javascript expression:
 %% js_driver:define(Port, &lt;&lt;"var x = 100;"&gt;&gt;).
-define_js(Ctx, Js) ->
-    define_js(Ctx, Js, ?SCRIPT_TIMEOUT).
-
-%% @private
-define_js(Ctx, {file, FileName}, Timeout) ->
+define_js(Ctx, {file, FileName}) ->
     {ok, File} = file:read_file(FileName),
-    define_js(Ctx, list_to_binary(FileName), File, Timeout);
-define_js(Ctx, Js, Timeout) when is_binary(Js) ->
-    define_js(Ctx, <<"unnamed">>, Js, Timeout).
+    define_js(Ctx, list_to_binary(FileName), File);
+define_js(Ctx, Js) when is_binary(Js) ->
+    define_js(Ctx, <<"unnamed">>, Js).
 
 %% @spec define_js(port(), binary(), binary(), integer()) -> {ok, binary()} | {error, any()}
 %% @doc Define a Javascript expression:
 %% js_driver:define(Port, &lt;&lt;var blah = new Wubba();"&gt;&gt;).
 %% Note: Filename is used only as a label for error reporting.
-define_js(Ctx, FileName, Js, _Timeout) when is_binary(FileName),
+define_js(Ctx, FileName, Js) when is_binary(FileName),
                                            is_binary(Js) ->
     case mozjs_nif:sm_eval(Ctx, FileName, Js, 0) of
         {error, ErrorJson} when is_binary(ErrorJson) ->
@@ -125,14 +107,10 @@ define_js(Ctx, FileName, Js, _Timeout) when is_binary(FileName),
 
 %% @spec eval_js(port(), binary()) -> {ok, any()} | {error, any()}
 %% @doc Evaluate a Javascript expression and return the result
-eval_js(Ctx, Js) ->
-    eval_js(Ctx, Js, ?SCRIPT_TIMEOUT).
-
-%% @private
-eval_js(Ctx, {file, FileName}, Timeout) ->
+eval_js(Ctx, {file, FileName}) ->
     {ok, File} = file:read_file(FileName),
-    eval_js(Ctx, File, Timeout);
-eval_js(Ctx, Js, _Timeout) when is_binary(Js) ->
+    eval_js(Ctx, File);
+eval_js(Ctx, Js) when is_binary(Js) ->
     case mozjs_nif:sm_eval(Ctx, <<"<unnamed>">>, jsonify(Js), 1) of
         {ok, Result} ->
             {ok, mochijson2:decode(Result)};
