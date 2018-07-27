@@ -31,33 +31,19 @@ make all test
 erl -pa path/to/erlang_js/ebin -boot start_sasl
 #+END_SRC
 
-   Start the =erlang_js= application and create a Javascript VM.
+   Create a Javascript VM.
 #+BEGIN_SRC erlang
-1> application:start(erlang_js).
-
-=PROGRESS REPORT==== 17-Feb-2011::11:31:51 ===
-          supervisor: {local,erlang_js_sup}
-             started: [{pid,<0.46.0>},
-                       {name,cache},
-                       {mfargs,{js_cache,start_link,[]}},
-                       {restart_type,permanent},
-                       {shutdown,2000},
-                       {child_type,worker}]
-
-=PROGRESS REPORT==== 17-Feb-2011::11:31:51 ===
-         application: erlang_js
-          started_at: nonode@nohost
-ok
-2> {ok, JS} = js_driver:new().
+1> {ok, JS} = js_driver:new().
+{ok,#Ref<0.557298074.1409679362.105432>}
 #+END_SRC
 
    Now you can evaluate Javascript expressions and call Javascript
    functions.
 
 #+BEGIN_SRC erlang
-3> js:define(JS, <<"var addOne = function(a){ return a + 1; }">>).
+2> js:define(JS, <<"var addOne = function(a){ return a + 1; }">>).
 ok
-4> js:call(JS, <<"addOne">>, [3]).
+3> js:call(JS, <<"addOne">>, [3]).
 {ok,4}
 #+END_SRC
 
