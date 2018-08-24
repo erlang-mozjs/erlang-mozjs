@@ -45,6 +45,11 @@ erl -pa path/to/erlang_js/ebin -boot start_sasl
 ok
 3> js:call(JS, <<"addOne">>, [3]).
 {ok,4}
+
+   Release JS resource when no longer needed.
+#+BEGIN_SRC erlang
+4> js_driver:destroy(JS).
+ok
 #+END_SRC
 
 ** Documentation
