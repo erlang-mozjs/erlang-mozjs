@@ -100,9 +100,7 @@ class spidermonkey_vm {
     {
       //delete global;
       if(context){
-	// FIXME FIXME FIXME
-        //JS_DestroyContext(context);
-        //delete context;
+        JS_DestroyContext(context);
         context = nullptr;
       }
     };
