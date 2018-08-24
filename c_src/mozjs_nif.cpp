@@ -15,23 +15,6 @@
 #include "erl_nif.h"
 #include "spidermonkey.h"
 
-/*
-void* operator new(size_t size)
-{
-  void *p = enif_alloc(size);
-  if (p)
-    return p;
-  else
-    erts_exit(1, "erlang_js: Can't allocate %lu bytes of memory\n", size);
-    // throw std::bad_alloc();
-};
-
-void operator delete(void* ptr) noexcept
-{
-     enif_free(ptr);
-};
-*/
-
 static ErlNifResourceType* mozjs_RESOURCE = nullptr;
 
 struct mozjs_handle

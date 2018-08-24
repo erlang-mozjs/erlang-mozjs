@@ -15,12 +15,12 @@
 
 #include <unistd.h>
 #include <time.h>
-#include <erl_driver.h>
+#include "erl_nif.h"
 
 #include "spidermonkey.h"
 void* operator new(size_t size)
 {
-  void *p = driver_alloc((ErlDrvSizeT)size);
+  void *p = enif_alloc(size);
   if (p)
     return p;
   else
@@ -30,7 +30,7 @@ void* operator new(size_t size)
 
 void operator delete(void* ptr) noexcept
 {
-  driver_free(ptr);
+     enif_free(ptr);
 };
 
 /* The class of the global object. */
