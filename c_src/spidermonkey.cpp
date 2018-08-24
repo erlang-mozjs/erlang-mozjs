@@ -171,13 +171,6 @@ void spidermonkey_vm::sm_stop() {
   delete state;
 }
 
-void sm_poweron(void) {
-  JS_Init();
-}
-void sm_shutdown(void) {
-  JS_ShutDown();
-}
-
 bool spidermonkey_vm::sm_eval(const char *filename, const char *code, char** output, int handle_retval) {
   if (code == nullptr)
       return false;

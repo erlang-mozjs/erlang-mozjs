@@ -126,8 +126,4 @@ class spidermonkey_vm {
     void check_js_exception();
 };
 
-void sm_poweron();
-
-void sm_shutdown(void);
-
 #endif
