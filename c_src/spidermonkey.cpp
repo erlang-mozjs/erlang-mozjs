@@ -135,7 +135,7 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
 
       // FIXME FIXME FIXME
       JS::RootedObject g(context, JS_NewGlobalObject(context, &global_class, nullptr, JS::FireOnNewGlobalHook, options));
-      global = g;
+      this->global = g;
 
       JSAutoCompartment ac(context, g);
       JS_InitStandardClasses(context, g);
