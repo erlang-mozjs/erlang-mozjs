@@ -79,6 +79,13 @@ static ERL_NIF_TERM mozjs_eval(ErlNifEnv* env, int argc,
     if (!enif_get_resource(env, argv[0], mozjs_RESOURCE, (void**)&handle))
         return enif_make_badarg(env);
 
+    if (handle->vm == nullptr)
+        return enif_make_tuple2(
+            env,
+            enif_make_atom(env, "error"),
+            enif_make_atom(env, "mozjs_not_initialized")
+    );
+
     unsigned filename_length = 0;
     enif_get_list_length(env, argv[1], &filename_length);
     char *filename = new char[filename_length+1];
@@ -121,8 +128,16 @@ static ERL_NIF_TERM mozjs_stop(ErlNifEnv* env, int argc,
     if (!enif_get_resource(env, argv[0], mozjs_RESOURCE, (void**)&handle))
         return enif_make_badarg(env);
 
+    if (handle->vm == nullptr)
+        return enif_make_tuple2(
+            env,
+            enif_make_atom(env, "error"),
+            enif_make_atom(env, "mozjs_not_initialized")
+    );
+
     handle->vm->sm_stop();
     delete handle->vm;
+    handle->vm = nullptr;
 
     return enif_make_atom(env, "ok");
 }
