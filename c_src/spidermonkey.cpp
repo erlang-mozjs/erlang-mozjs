@@ -18,6 +18,9 @@
 #include "erl_nif.h"
 
 #include "spidermonkey.h"
+
+#include <jsapi.h>
+
 void* operator new(size_t size)
 {
   void *p = enif_alloc(size);
@@ -147,6 +150,14 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
       JS_SetContextPrivate(context, state);
       JS_DefineFunction(context, g, "ejsLog", (JSNative) js_log, 0, 0);
       JS_EndRequest(context);
+}
+
+spidermonkey_vm::~spidermonkey_vm() {
+  //delete global;
+  if(context){
+    JS_DestroyContext(context);
+    context = nullptr;
+  }
 }
 
 void spidermonkey_vm::sm_stop() {

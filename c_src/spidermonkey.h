@@ -16,7 +16,6 @@
 #ifndef __SPIDERMONKEY_INTERFACE_
 #define __SPIDERMONKEY_INTERFACE_
 
-#include <jsapi.h>
 #include <jsfriendapi.h>
 #include <js/Conversions.h>
 #include <js/Value.h>
@@ -94,15 +93,9 @@ class spidermonkey_vm {
   public:
     JSContext* context;
     JSObject* global;
+
     spidermonkey_vm(size_t thread_stack, uint32_t heap_size);
-    ~spidermonkey_vm()
-    {
-      //delete global;
-      if(context){
-        JS_DestroyContext(context);
-        context = nullptr;
-      }
-    };
+    ~spidermonkey_vm();
 
     // Erlang binaries aren't null-terminated, so we have to provide length explicitly
     bool sm_eval(const char *filename, size_t filename_length, const char *code, size_t code_length, char** output, int handle_retval);
