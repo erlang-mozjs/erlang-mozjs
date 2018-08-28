@@ -14,27 +14,13 @@
    limitations under the License. */
 
 #include <unistd.h>
-#include <time.h>
-#include "erl_nif.h"
-
-#include "spidermonkey.h"
+#include <ctime>
+#include <cstring>
 
 #include <jsapi.h>
+#include <js/Conversions.h>
 
-void* operator new(size_t size)
-{
-  void *p = enif_alloc(size);
-  if (p)
-    return p;
-  else
-    erts_exit(1, "erlang_js: Can't allocate %lu bytes of memory\n", size);
-    // throw std::bad_alloc();
-};
-
-void operator delete(void* ptr) noexcept
-{
-     enif_free(ptr);
-};
+#include "spidermonkey.h"
 
 /* The class of the global object. */
 static constexpr JSClass global_class = {
@@ -107,6 +93,46 @@ bool js_log(JSContext *cx, unsigned argc, JS::Value *vp) {
   }
   return true;
 }
+
+void spidermonkey_state::replace_error(const char* m, unsigned int l, const char* os) {
+      free_error();
+
+      msg = new std::string(m);
+      lineno = l;
+      if(os)
+        offending_source = new std::string(os);
+      else
+        offending_source = new std::string("<internally_generated>");
+      error = true;
+};
+
+char* spidermonkey_state::error_to_json() {
+      std::string *escaped_source = new std::string();
+      bool escaped = false;
+      for(char c : *offending_source) {
+        if(c =='\\') {
+          *escaped_source += c;
+          escaped = true;
+        }
+        else {
+          if((c == '"') && !escaped)
+            *escaped_source += "\\\"";
+          else
+            *escaped_source += c;
+          escaped = false;
+        }
+      }
+
+      char fmt[] = "{\"lineno\": %d, \"message\": \"%s\", \"source\": \"%s\"}";
+      size_t size = escaped_source->length() + msg->length() + strlen(fmt);
+      char *retval = new char[size];
+
+      snprintf(retval, size, fmt, lineno, msg->c_str(), escaped_source->c_str());
+      delete escaped_source;
+
+      free_error();
+      return retval;
+};
 
 spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
 {

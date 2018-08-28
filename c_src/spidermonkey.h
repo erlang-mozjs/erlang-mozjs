@@ -16,13 +16,7 @@
 #ifndef __SPIDERMONKEY_INTERFACE_
 #define __SPIDERMONKEY_INTERFACE_
 
-#include <jsfriendapi.h>
-#include <js/Conversions.h>
 #include <js/Value.h>
-
-extern "C" void erts_exit(int n, const char*, ...);
-
-#include "erl_nif.h"
 #include <string>
 
 class spidermonkey_state {
@@ -35,46 +29,8 @@ class spidermonkey_state {
     {
       free_error();
     };
-    void replace_error(const char* m = "undefined error", unsigned int l = 0, const char* os = "<unknown>")
-    {
-      free_error();
-
-      msg = new std::string(m);
-      lineno = l;
-      if(os)
-        offending_source = new std::string(os);
-      else
-        offending_source = new std::string("<internally_generated>");
-      error = true;
-    };
-    char* error_to_json()
-    {
-      std::string *escaped_source = new std::string();
-      bool escaped = false;
-      for(char c : *offending_source) {
-        if(c =='\\') {
-          *escaped_source += c;
-          escaped = true;
-        }
-        else {
-          if((c == '"') && !escaped)
-            *escaped_source += "\\\"";
-          else
-            *escaped_source += c;
-          escaped = false;
-        }
-      }
-
-      char fmt[] = "{\"lineno\": %d, \"message\": \"%s\", \"source\": \"%s\"}";
-      size_t size = escaped_source->length() + msg->length() + strlen(fmt);
-      char *retval = new char[size];
-
-      snprintf(retval, size, fmt, lineno, msg->c_str(), escaped_source->c_str());
-      delete escaped_source;
-
-      free_error();
-      return retval;
-    };
+    void replace_error(const char* m = "undefined error", unsigned int l = 0, const char* os = "<unknown>");
+    char* error_to_json();
   private:
     unsigned int lineno = 0;
     std::string *msg = nullptr;
@@ -100,20 +56,6 @@ class spidermonkey_vm {
     // Erlang binaries aren't null-terminated, so we have to provide length explicitly
     bool sm_eval(const char *filename, size_t filename_length, const char *code, size_t code_length, char** output, int handle_retval);
     void sm_stop();
-    void* operator new(size_t size)
-    {
-      void *p = enif_alloc(size);
-      if (p)
-        return p;
-
-      erts_exit(1, "erlang-mozjs: Can't allocate %lu bytes of memory\n", size);
-      // throw std::bad_alloc();
-    };
-
-    void operator delete(void* ptr) noexcept
-    {
-      enif_free(ptr);
-    };
 
   private:
     void check_js_exception();
