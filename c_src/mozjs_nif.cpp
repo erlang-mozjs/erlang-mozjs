@@ -15,6 +15,8 @@
 #include "erl_nif.h"
 #include "spidermonkey.h"
 
+#include <js/Initialization.h>
+
 static ErlNifResourceType* mozjs_RESOURCE = nullptr;
 
 ERL_NIF_TERM atom_ok;

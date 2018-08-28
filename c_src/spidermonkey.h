@@ -20,7 +20,6 @@
 #include <jsfriendapi.h>
 #include <js/Conversions.h>
 #include <js/Value.h>
-#include <js/Initialization.h>
 
 extern "C" void erts_exit(int n, const char*, ...);
 
