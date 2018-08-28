@@ -71,8 +71,11 @@ static ERL_NIF_TERM mozjs_eval(ErlNifEnv* env, int argc,
 
     ErlNifBinary filename, code;
 
-    enif_inspect_binary(env, argv[1], &filename);
-    enif_inspect_binary(env, argv[2], &code);
+    if(!enif_inspect_binary(env, argv[1], &filename))
+        return enif_make_badarg(env);
+
+    if(!enif_inspect_binary(env, argv[2], &code))
+        return enif_make_badarg(env);
 
     int handle_retval = 0;
     enif_get_int(env, argv[3], &handle_retval);
