@@ -105,7 +105,8 @@ class spidermonkey_vm {
       }
     };
 
-    bool sm_eval(const char *filename, const char *code, char** output, int handle_retval);
+    // Erlang binaries aren't null-terminated, so we have to provide length explicitly
+    bool sm_eval(const char *filename, size_t filename_length, const char *code, size_t code_length, char** output, int handle_retval);
     void sm_stop();
     void* operator new(size_t size)
     {

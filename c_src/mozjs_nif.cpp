@@ -69,24 +69,16 @@ static ERL_NIF_TERM mozjs_eval(ErlNifEnv* env, int argc,
             enif_make_atom(env, "mozjs_not_initialized")
     );
 
-    unsigned filename_length = 0;
-    enif_get_list_length(env, argv[1], &filename_length);
-    char *filename = new char[filename_length+1];
-    enif_get_string(env, argv[1], filename, filename_length+1, ERL_NIF_LATIN1);
+    ErlNifBinary filename, code;
 
-    unsigned code_length = 0;
-    enif_get_list_length(env, argv[2], &code_length);
-    char *code = new char[code_length+1];
-    enif_get_string(env, argv[2], code, code_length+1, ERL_NIF_LATIN1);
+    enif_inspect_binary(env, argv[1], &filename);
+    enif_inspect_binary(env, argv[2], &code);
 
     int handle_retval = 0;
     enif_get_int(env, argv[3], &handle_retval);
 
     char* output = nullptr;
-    bool retval = handle->vm->sm_eval(filename, code, &output, handle_retval);
-
-    delete[] filename;
-    delete[] code;
+    bool retval = handle->vm->sm_eval((const char*)filename.data, filename.size, (const char*)code.data, code.size, &output, handle_retval);
 
     if (output) {
         ErlNifBinary result;

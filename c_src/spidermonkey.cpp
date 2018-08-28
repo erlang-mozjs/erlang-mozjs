@@ -171,7 +171,7 @@ void spidermonkey_vm::sm_stop() {
   delete state;
 }
 
-bool spidermonkey_vm::sm_eval(const char *filename, const char *code, char** output, int handle_retval) {
+bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, const char *code, size_t code_length, char** output, int handle_retval) {
   if (code == nullptr)
       return false;
 
@@ -180,14 +180,16 @@ bool spidermonkey_vm::sm_eval(const char *filename, const char *code, char** out
   JSAutoCompartment ac(this->context, this->global);
   JSAutoRequest ar(this->context);
 
+  char* filename0 = strndup(filename, filename_length);
   JS::CompileOptions options(this->context);
   options
 	  .setVersion(JSVERSION_LATEST)
 	  .setUTF8(true)
-          .setFileAndLine(filename, 1);
+          .setFileAndLine(filename0, 1);
+  free(filename0);
 
   JS::RootedScript script(this->context);
-  if (!JS::Compile(this->context, options, code, strlen(code), &script))
+  if (!JS::Compile(this->context, options, code, code_length, &script))
     this->check_js_exception();
   spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
   if (state->error) {

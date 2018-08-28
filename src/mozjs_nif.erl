@@ -25,10 +25,10 @@ init() ->
 
 sm_init(_ThreadStack, _HeapSize) ->
     ?nif_stub.
-sm_eval(Ref, Filename, Js, HandleRetval)  when is_binary(Filename) ->
-    sm_eval(Ref, binary_to_list(Filename), Js, HandleRetval);
-sm_eval(Ref, Filename, Js, HandleRetval)  when is_binary(Js) ->
-    sm_eval(Ref, Filename, binary_to_list(Js), HandleRetval);
+sm_eval(Ref, Filename, Js, HandleRetval)  when is_list(Filename) ->
+    sm_eval(Ref, list_to_binary(Filename), Js, HandleRetval);
+sm_eval(Ref, Filename, Js, HandleRetval)  when is_list(Js) ->
+    sm_eval(Ref, Filename, list_to_binary(Js), HandleRetval);
 sm_eval(Ref, Filename, Js, HandleRetval) ->
     sm_eval_nif(Ref, Filename, Js, HandleRetval).
 sm_eval_nif(_Ref, _, _, _) ->
