@@ -7,10 +7,7 @@
 
 -on_load(init/0).
 
--define(nif_stub, nif_stub_error(?LINE)).
-
-nif_stub_error(Line) ->
-    erlang:nif_error({nif_not_loaded,module,?MODULE,line,Line}).
+-define(nif_stub, erlang:nif_error({nif_not_loaded,module,?MODULE,line,?LINE})).
 
 init() ->
     PrivDir = case code:priv_dir(?MODULE) of
