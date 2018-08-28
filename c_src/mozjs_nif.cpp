@@ -17,6 +17,10 @@
 
 static ErlNifResourceType* mozjs_RESOURCE = nullptr;
 
+ERL_NIF_TERM atom_ok;
+ERL_NIF_TERM atom_error;
+ERL_NIF_TERM atom_noinit;
+
 struct mozjs_handle
 {
     spidermonkey_vm* vm = nullptr;
@@ -51,7 +55,7 @@ static ERL_NIF_TERM mozjs_init(ErlNifEnv* env, int argc,
     ERL_NIF_TERM result = enif_make_resource(env, handle);
     enif_release_resource(handle);
 
-    return enif_make_tuple2(env, enif_make_atom(env, "ok"), result);
+    return enif_make_tuple2(env, atom_ok, result);
 }
 
 static ERL_NIF_TERM mozjs_eval(ErlNifEnv* env, int argc,
@@ -63,11 +67,7 @@ static ERL_NIF_TERM mozjs_eval(ErlNifEnv* env, int argc,
         return enif_make_badarg(env);
 
     if (handle->vm == nullptr)
-        return enif_make_tuple2(
-            env,
-            enif_make_atom(env, "error"),
-            enif_make_atom(env, "mozjs_not_initialized")
-    );
+        return enif_make_tuple2(env, atom_error, atom_noinit);
 
     ErlNifBinary filename, code;
 
@@ -90,12 +90,12 @@ static ERL_NIF_TERM mozjs_eval(ErlNifEnv* env, int argc,
         delete[] output;
 
 	if (retval)
-	    return enif_make_tuple2(env, enif_make_atom(env, "ok"), enif_make_binary(env, &result));
+	    return enif_make_tuple2(env, atom_ok, enif_make_binary(env, &result));
 	else
-	    return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_binary(env, &result));
+	    return enif_make_tuple2(env, atom_error, enif_make_binary(env, &result));
     }
 
-    return enif_make_atom(env, "ok");
+    return atom_ok;
 }
 
 static ERL_NIF_TERM mozjs_stop(ErlNifEnv* env, int argc,
@@ -107,17 +107,13 @@ static ERL_NIF_TERM mozjs_stop(ErlNifEnv* env, int argc,
         return enif_make_badarg(env);
 
     if (handle->vm == nullptr)
-        return enif_make_tuple2(
-            env,
-            enif_make_atom(env, "error"),
-            enif_make_atom(env, "mozjs_not_initialized")
-    );
+        return enif_make_tuple2(env, atom_error, atom_noinit);
 
     handle->vm->sm_stop();
     delete handle->vm;
     handle->vm = nullptr;
 
-    return enif_make_atom(env, "ok");
+    return atom_ok;
 }
 
 static void mozjs_resource_cleanup(ErlNifEnv* env, void* arg)
@@ -137,6 +133,10 @@ static int on_load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
         return -1;
 
     mozjs_RESOURCE = rt;
+
+    atom_ok = enif_make_atom(env, "ok");
+    atom_error = enif_make_atom(env, "error");
+    atom_noinit = enif_make_atom(env, "mozjs_not_initialized");
 
     JS_Init();
 
