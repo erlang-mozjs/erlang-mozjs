@@ -200,8 +200,8 @@ bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, cons
   }
 
   JS::RootedValue result(this->context);
-  JS_ExecuteScript(this->context, script, &result);
-  this->check_js_exception();
+  if(!JS_ExecuteScript(this->context, script, &result))
+    this->check_js_exception();
   state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
   if (state->error) {
     *output = state->error_to_json();
