@@ -28,7 +28,7 @@ sm_eval(Ref, Filename, Js, HandleRetval)  when is_list(Js) ->
     sm_eval(Ref, Filename, list_to_binary(Js), HandleRetval);
 sm_eval(Ref, Filename, Js, HandleRetval) ->
     sm_eval_nif(Ref, Filename, Js, HandleRetval).
-sm_eval_nif(_Ref, _, _, _) ->
+sm_eval_nif(_Ref, _Filename, _Js, _HandleRetval) ->
     ?nif_stub.
 sm_stop(_Ref) ->
     ?nif_stub.
