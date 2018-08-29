@@ -12,7 +12,7 @@ verbose:
 
 check: test
 test: all
-	$(REBAR) eunit
+	$(REBAR) eunit skip_deps=true
 
 docs:
 	$(REBAR) doc
