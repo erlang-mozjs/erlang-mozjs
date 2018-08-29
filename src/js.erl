@@ -24,12 +24,12 @@
 
 -export([define/2, define/3, eval/2, call/3, call/4]).
 
-%% @spec define(port(), binary()) -> ok | {error, any()}
+%% @spec define(reference(), binary()) -> ok | {error, any()}
 %% @doc Define one or more Javascript expressions.
 define(Ctx, Js) ->
     define(Ctx, Js, []).
 
-%% @spec define(port(), binary(), list(any())) -> ok | {error, any()}
+%% @spec define(reference(), binary(), list(any())) -> ok | {error, any()}
 %% @doc Define one or more Javascript expressions using a set of bindings. Bindings
 %% are useful when the expressions use closures.
 define(Ctx, Js, Bindings) ->
@@ -37,18 +37,18 @@ define(Ctx, Js, Bindings) ->
     FinalJs = iolist_to_binary([JsBindings, Js]),
     js_driver:define_js(Ctx, FinalJs).
 
-%% @spec eval(port(), binary()) -> {ok, any()} | {error, any()}
+%% @spec eval(reference(), binary()) -> {ok, any()} | {error, any()}
 %% @doc Evaluate one or more Javascript expressions and return the results
 eval(Ctx, Js) ->
     js_driver:eval_js(Ctx, Js).
 
-%% @spec call(port(), binary(), list(any())) -> {ok, Result} | {error, any()}
+%% @spec call(reference(), binary(), list(any())) -> {ok, Result} | {error, any()}
 %% @doc Call a function by name with a list of arguments. This is roughly the
 %% same as apply in most other languages.
 call(Ctx, FunctionName, Args) ->
     call(Ctx, FunctionName, Args, []).
 
-%% @spec call(port(), binary(), list(any()), list(any())) -> {ok, Result} | {error, any()}
+%% @spec call(reference(), binary(), list(any()), list(any())) -> {ok, Result} | {error, any()}
 %% @doc Call a function by name with a list of arguments and environmental bindings. Bindings
 %% behave just like define/3.
 call(Ctx, FunctionName, Args, Bindings) ->
