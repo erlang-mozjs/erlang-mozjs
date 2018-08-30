@@ -17,5 +17,8 @@ test: all
 docs:
 	$(REBAR) doc
 
+deps:
+	$(REBAR) get-deps
+
 clean:
 	$(REBAR) clean
