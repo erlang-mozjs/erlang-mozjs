@@ -45,6 +45,7 @@ erl -pa path/to/erlang-mozjs/ebin -boot start_sasl
 ok
 3> js:call(JS, <<"addOne">>, [3]).
 {ok,4}
+#+END_SRC
 
    Release JS resource when no longer needed.
 #+BEGIN_SRC erlang
