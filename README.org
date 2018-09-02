@@ -11,7 +11,7 @@
 
    =erlang-mozjs= builds and executes only on Unix-based platforms, including
    Linux, Mac OS/X, and Solaris. It requires Spidermonkey 52 and includes [[https://crockford.com][Douglas
-   Crockford]]'s =[[https://github.com/douglascrockford/JSON-js][json2.js]]= JSON parser. More information about the features
+   Crockford]]'s [[https://github.com/douglascrockford/JSON-js][json2.js]] JSON parser. More information about the features
    available to Javascript inside =erlang-mozjs= are detailed on the
    [[https://developer.mozilla.org/en/JavaScript/Reference][Mozilla Developer Center]].
 
