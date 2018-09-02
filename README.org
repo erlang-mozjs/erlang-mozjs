@@ -3,16 +3,15 @@
 
    [[http://travis-ci.org/erlang-mozjs/erlang-mozjs][Travis-CI]] :: [[https://secure.travis-ci.org/erlang-mozjs/erlang-mozjs.png]]
 
-   =erlang-mozjs= is a NIF library, API, and OTP application that
-   embeds Mozilla's Spidermonkey Javascript Virtual Machine in
-   Erlang. Originally created to facilitate usage of Riak's MapReduce
-   by non-Erlang programmers, it supports multiple concurrent
-   Javascript VMs, runtime evaluation of Javascript code, and
+   =erlang-mozjs= is a NIF library, and API that embeds Mozilla's Spidermonkey
+   Javascript Virtual Machine in Erlang. Originally created to facilitate usage
+   of Riak's MapReduce by non-Erlang programmers, it supports multiple
+   concurrent Javascript VMs, runtime evaluation of Javascript code, and
    invocation of Javascript functions.
 
    =erlang-mozjs= builds and executes only on Unix-based platforms, including
-   Linux, Mac OS/X, and Solaris. It requires Spidermonkey 52 and includes Douglas
-   Crockford's =json2.js= JSON parser. More information about the features
+   Linux, Mac OS/X, and Solaris. It requires Spidermonkey 52 and includes [[https://crockford.com][Douglas
+   Crockford]]'s =[[https://github.com/douglascrockford/JSON-js][json2.js]]= JSON parser. More information about the features
    available to Javascript inside =erlang-mozjs= are detailed on the
    [[https://developer.mozilla.org/en/JavaScript/Reference][Mozilla Developer Center]].
 
