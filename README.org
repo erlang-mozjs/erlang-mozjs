@@ -84,6 +84,5 @@ git checkout -b some-topic-branch
 #+BEGIN_SRC shell
 git push mine some-topic-branch
 #+END_SRC
-   6) A Basho engineer or community maintainer will review your patch
-      and merge it into the main repository or send you feedback.
-
+   6) A community maintainer will review your patch and merge it into the main
+      repository or send you feedback.
