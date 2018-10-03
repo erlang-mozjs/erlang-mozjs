@@ -158,7 +158,6 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
       JS_BeginRequest(context);
 
       JS::CompartmentOptions options;
-      options.behaviors().setVersion(JSVERSION_LATEST);
 
       spidermonkey_state *state = new spidermonkey_state();
 
@@ -220,7 +219,6 @@ bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, cons
   char* filename0 = strndup(filename, filename_length);
   JS::CompileOptions options(this->context);
   options
-	  .setVersion(JSVERSION_LATEST)
 	  .setUTF8(true)
           .setFileAndLine(filename0, 1);
   free(filename0);
