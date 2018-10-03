@@ -122,7 +122,7 @@ static ERL_NIF_TERM mozjs_stop(ErlNifEnv* env, int argc,
 static void mozjs_resource_cleanup(ErlNifEnv* env, void* arg)
 {
     /* Delete any dynamically allocated memory stored in mozjs_handle */
-    mozjs_handle* handle = (mozjs_handle*)arg;
+    return;
 }
 
 static int on_load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
