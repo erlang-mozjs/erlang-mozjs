@@ -4,15 +4,21 @@
 
 REBAR ?= $(shell which rebar 2>/dev/null || which ./rebar)
 
-all:
+all: compile
+
+compile:
 	$(REBAR) compile
 
-verbose:
+compile_verbose:
 	$(REBAR) compile verbose=1
 
 check: test
 test: all
 	$(REBAR) eunit skip_deps=true
+
+check_verbose: test_verbose
+test_verbose: all
+	$(REBAR) eunit -v skip_deps=true
 
 docs:
 	$(REBAR) doc
