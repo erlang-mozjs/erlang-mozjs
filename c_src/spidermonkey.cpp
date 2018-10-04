@@ -179,10 +179,7 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
 
 spidermonkey_vm::~spidermonkey_vm() {
   //delete global;
-  if(context){
-    JS_DestroyContext(context);
-    context = nullptr;
-  }
+  JS_DestroyContext(context);
 }
 
 void spidermonkey_vm::sm_stop() {
