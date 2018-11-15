@@ -2,6 +2,7 @@
 
 -export([sm_init/2,
          sm_eval/4,
+         sm_cancel/1,
          sm_stop/1]).
 
 -on_load(init/0).
@@ -28,6 +29,8 @@ sm_eval(Ref, Filename, Js, HandleRetval)  when is_list(Js) ->
 sm_eval(Ref, Filename, Js, HandleRetval) ->
     sm_eval_nif(Ref, Filename, Js, HandleRetval).
 sm_eval_nif(_Ref, _Filename, _Js, _HandleRetval) ->
+    ?nif_stub.
+sm_cancel(_Ref) ->
     ?nif_stub.
 sm_stop(_Ref) ->
     ?nif_stub.
