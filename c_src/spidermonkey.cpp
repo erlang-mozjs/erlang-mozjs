@@ -179,8 +179,18 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
 }
 
 spidermonkey_vm::~spidermonkey_vm() {
+  JS_BeginRequest(this->context);
+  spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
+  JS_SetContextPrivate(this->context, nullptr);
+  JS_EndRequest(this->context);
+
+  //Now we should be free to proceed with
+  //freeing up memory without worrying about
+  //crashing the VM.
+  delete state;
+
   //delete global;
-  JS_DestroyContext(context);
+  JS_DestroyContext(this->context);
 }
 
 void spidermonkey_vm::sm_stop() {
@@ -194,13 +204,8 @@ void spidermonkey_vm::sm_stop() {
   while (JS_IsRunning(this->context))
       sleep(1);
 
-  JS_SetContextPrivate(this->context, nullptr);
   JS_EndRequest(this->context);
 
-  //Now we should be free to proceed with
-  //freeing up memory without worrying about
-  //crashing the VM.
-  delete state;
 }
 
 bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, const char *code, size_t code_length, char** output, int handle_retval) {
