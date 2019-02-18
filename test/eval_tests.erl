@@ -91,6 +91,8 @@ error_test_() ->
 			{"Define fun which throws error", ?_assertEqual(ok, js:define(Handle, <<"function foo() { throw new Error(\"notfound\"); };">>))},
 			{"Check if this fun actually returns error?", ?_assert(verify_error(js:call(Handle, <<"foo">>, [])))},
 
+			{"Try to execute an empty string", ?_assert(verify_error(js:call(Handle, <<>>, [])))},
+
 			{"Call for non-existing fun", ?_assert(verify_error(js:eval(Handle, <<"blah(\"wubba\");">>)))}
 		] end
       }.
