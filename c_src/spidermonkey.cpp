@@ -43,6 +43,7 @@ bool on_branch(JSContext *context) {
   state->branch_count++;
 
   if (state->terminate)  {
+      JS_GC(context);
       return_value = false;
   }
   else if (state->branch_count == 550) {
@@ -192,8 +193,6 @@ void spidermonkey_vm::sm_stop() {
   //before beginning to free up any memory.
   while (JS_IsRunning(this->context))
       sleep(1);
-
-  JS_GC(this->context);
 
   JS_SetContextPrivate(this->context, nullptr);
   JS_EndRequest(this->context);
