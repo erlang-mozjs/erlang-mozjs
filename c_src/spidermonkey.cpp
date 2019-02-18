@@ -208,9 +208,6 @@ void spidermonkey_vm::sm_stop() {
 }
 
 bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, const char *code, size_t code_length, char** output, int handle_retval) {
-  if (code == nullptr)
-      return false;
-
   JS_BeginRequest(this->context);
 
   JSAutoCompartment ac(this->context, this->global);
