@@ -198,13 +198,11 @@ void spidermonkey_vm::sm_stop() {
   spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
   state->terminate = true;
   JS_SetContextPrivate(this->context, state);
-
-  //Wait for any executing function to stop
-  //before beginning to free up any memory.
-  while (JS_IsRunning(this->context))
-      sleep(1);
-
   JS_EndRequest(this->context);
+
+  // Request interrupt callback immediately. This call is thread-safe and can
+  // be called outside of JS_BeginRequest/JS_EndRequest.
+  JS_RequestInterruptCallback(this->context);
 }
 
 bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, const char *code, size_t code_length, char** output, int handle_retval) {
