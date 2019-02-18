@@ -205,7 +205,6 @@ void spidermonkey_vm::sm_stop() {
       sleep(1);
 
   JS_EndRequest(this->context);
-
 }
 
 bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, const char *code, size_t code_length, char** output, int handle_retval) {
