@@ -5,10 +5,12 @@ services:
 
 before_install:
 - docker build -t build_fedora_28 travis-ci/fedora_28/
+- docker build -t build_fedora_29 travis-ci/fedora_29/
 - docker build -t build_ubuntu_20.3 travis-ci/ubuntu_20.3/
 - docker build -t build_ubuntu_21 travis-ci/ubuntu_21/
 
 script:
 - docker run -v $TRAVIS_BUILD_DIR:/home/ejs/ build_fedora_28 /bin/sh -c "cd /home/ejs/; make deps; make test"
+- docker run -v $TRAVIS_BUILD_DIR:/home/ejs/ build_fedora_29 /bin/sh -c "cd /home/ejs/; make deps; make test"
 - docker run -v $TRAVIS_BUILD_DIR:/home/ejs/ build_ubuntu_20.3 /bin/sh -c "cd /home/ejs/; make deps; make test"
 - docker run -v $TRAVIS_BUILD_DIR:/home/ejs/ build_ubuntu_21 /bin/sh -c "cd /home/ejs/; make deps; make test"
