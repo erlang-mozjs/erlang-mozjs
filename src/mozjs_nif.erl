@@ -2,7 +2,6 @@
 
 -export([sm_init/2,
          sm_eval/4,
-         sm_eval_nif/4,
          sm_stop/1]).
 
 -on_load(init/0).
