@@ -34,6 +34,8 @@ static ERL_NIF_TERM mozjs_init(ErlNifEnv* env, int argc,
                                    const ERL_NIF_TERM argv[]);
 static ERL_NIF_TERM mozjs_eval(ErlNifEnv* env, int argc,
                                    const ERL_NIF_TERM argv[]);
+static ERL_NIF_TERM mozjs_cancel(ErlNifEnv* env, int argc,
+                                   const ERL_NIF_TERM argv[]);
 static ERL_NIF_TERM mozjs_stop(ErlNifEnv* env, int argc,
                                    const ERL_NIF_TERM argv[]);
 
@@ -41,6 +43,7 @@ static ErlNifFunc nif_funcs[] =
 {
     {"sm_init", 2, mozjs_init, ERL_NIF_DIRTY_JOB_CPU_BOUND},
     {"sm_eval_nif", 4, mozjs_eval, ERL_NIF_DIRTY_JOB_CPU_BOUND},
+    {"sm_cancel", 1, mozjs_cancel, ERL_NIF_DIRTY_JOB_CPU_BOUND},
     {"sm_stop", 1, mozjs_stop, ERL_NIF_DIRTY_JOB_CPU_BOUND}
 };
 
@@ -101,6 +104,21 @@ static ERL_NIF_TERM mozjs_eval(ErlNifEnv* env, int argc,
     return atom_ok;
 }
 
+static ERL_NIF_TERM mozjs_cancel(ErlNifEnv* env, int argc,
+                                          const ERL_NIF_TERM argv[])
+{
+    mozjs_handle* handle = nullptr;
+
+    if (!enif_get_resource(env, argv[0], mozjs_RESOURCE, (void**)&handle))
+        return enif_make_badarg(env);
+
+    if (handle->vm == nullptr)
+        return enif_make_tuple2(env, atom_error, atom_noinit);
+
+    handle->vm->sm_stop();
+
+    return atom_ok;
+}
 static ERL_NIF_TERM mozjs_stop(ErlNifEnv* env, int argc,
                                           const ERL_NIF_TERM argv[])
 {

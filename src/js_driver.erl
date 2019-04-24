@@ -113,6 +113,8 @@ exec_js(Ctx, FileName, Js, _Jsonify, HandleRetval) when is_binary(FileName), is_
     case mozjs_nif:sm_eval(Ctx, FileName, Js, HandleRetval) of
         ok ->
             ok;
+	{ok, <<"undefined">>} ->
+            {error, mozjs_script_interrupted};
         {ok, Result} ->
             {ok, mochijson2:decode(Result)};
         {error, ErrorJson} when is_binary(ErrorJson) ->
