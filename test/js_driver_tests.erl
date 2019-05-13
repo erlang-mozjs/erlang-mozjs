@@ -14,3 +14,16 @@ basic_define_test_() ->
 			{"define from file", ?_assertEqual(ok, js_driver:define_js(Handle, {file, "../test/erltest3.js"}))}
 		] end
       }.
+
+interruptible_test_() ->
+	{setup,
+		fun() ->
+			{ok, Handle} = mozjs_nif:sm_init(8, 8),
+			js:define(Handle, <<"function infinite_foo_js_define() { for (;;) {} };">>),
+			Handle
+		end,
+		fun(Handle) -> mozjs_nif:sm_stop(Handle) end,
+		fun(Handle) -> [
+			{"Try interruptible", ?_assertEqual({error, timeout}, js_driver:eval_js(Handle, <<"infinite_foo_js_define();">>, 1000))}
+		] end
+      }.

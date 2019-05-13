@@ -115,8 +115,8 @@ exec_js(Ctx, Js, Jsonify, HandleRetval, Timeout) ->
 
 exec_js(Ctx, FileName, Js, jsonify, HandleRetval, Timeout) ->
     exec_js(Ctx, FileName, jsonify(Js), no_jsonify, HandleRetval, Timeout);
-exec_js(Ctx, FileName, Js, _Jsonify, HandleRetval, _Timeout) when is_binary(FileName), is_binary(Js) ->
-    case mozjs_nif:sm_eval(Ctx, FileName, Js, HandleRetval) of
+exec_js(Ctx, FileName, Js, _Jsonify, HandleRetval, Timeout) when is_binary(FileName), is_binary(Js) ->
+    case mozjs_nif:sm_eval(Ctx, FileName, Js, HandleRetval, Timeout) of
         ok ->
             ok;
 	{ok, <<"undefined">>} ->
