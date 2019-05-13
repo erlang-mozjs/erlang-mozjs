@@ -40,7 +40,7 @@ new(ThreadStackSize, HeapSize) ->
     Initializer = fun(X) -> define_js(X, <<"json2.js">>, json_converter()) end,
     new(ThreadStackSize, HeapSize, Initializer).
 
-%% @type init_fun() = function(reference()) -> true | false
+%% @type init_fun() = function(reference())
 %% @spec new(int(), int(), init_fun() | {ModName::atom(), FunName::atom()}) -> {ok, reference()} | {error, atom()} | {error, any()}
 %% @doc Create a new Javascript VM instance. The function arguments control how the VM instance is initialized.
 %% User supplied initializers must return true or false.
