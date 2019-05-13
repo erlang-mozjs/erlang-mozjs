@@ -65,13 +65,13 @@ destroy(Ctx) ->
 
 %% @spec define_js(reference(), {file, list()} | binary()) -> ok | {error, any()}
 %% @doc Define a Javascript expression:
-%% js_driver:define(Port, &lt;&lt;"var x = 100;"&gt;&gt;).
+%% js_driver:define_js(Ctx, &lt;&lt;"var x = 100;"&gt;&gt;).
 define_js(Ctx, JsSrc) ->
     exec_js(Ctx, JsSrc, no_jsonify, 0).
 
 %% @spec define_js(reference(), binary(), binary()) -> {ok, binary()} | {error, any()}
 %% @doc Define a Javascript expression:
-%% js_driver:define(Port, &lt;&lt;var blah = new Wubba();"&gt;&gt;).
+%% js_driver:define_js(Ctx, &lt;&lt;"var blah = new Wubba();"&gt;&gt;).
 %% Note: Filename is used only as a label for error reporting.
 define_js(Ctx, FileName, Js) ->
     exec_js(Ctx, FileName, Js, no_jsonify, 0).
