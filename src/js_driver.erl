@@ -22,6 +22,7 @@
 
 -define(DEFAULT_HEAP_SIZE, 8). %% MB
 -define(DEFAULT_THREAD_STACK, 16). %% MB
+-define(DEFAULT_TIMEOUT, 5000).
 
 -export([new/0, new/2, new/3, destroy/1]).
 -export([define_js/2, define_js/3, eval_js/2, eval_js/3]).
@@ -40,7 +41,7 @@ new(ThreadStackSize, HeapSize) ->
     Initializer = fun(X) -> define_js(X, <<"json2.js">>, json_converter()) end,
     new(ThreadStackSize, HeapSize, Initializer).
 
-%% @type init_fun() = function(reference()) -> true | false
+%% @type init_fun() = function(reference())
 %% @spec new(int(), int(), init_fun() | {ModName::atom(), FunName::atom()}) -> {ok, reference()} | {error, atom()} | {error, any()}
 %% @doc Create a new Javascript VM instance. The function arguments control how the VM instance is initialized.
 %% User supplied initializers must return true or false.
@@ -63,30 +64,33 @@ new(ThreadStackSize, HeapSize, {InitMod, InitFun}) ->
 destroy(Ctx) ->
     mozjs_nif:sm_stop(Ctx).
 
-%% @spec define_js(reference(), {file, list()} | binary()) -> ok | {error, any()}
+%% @type jsfilename() = list() | binary()
+%% @type jscontents() = list() | binary()
+%% @type jssrc() = {file, jsfilename()} | {jsfilename(), jscontents()} | jscontents()
+%% @spec define_js(reference(), jssrc()) -> ok | {error, any()}
 %% @doc Define a Javascript expression:
-%% js_driver:define(Port, &lt;&lt;"var x = 100;"&gt;&gt;).
+%% js_driver:define_js(Ctx, &lt;&lt;"var x = 100;"&gt;&gt;).
 define_js(Ctx, JsSrc) ->
-    exec_js(Ctx, JsSrc, no_jsonify, 0).
+    exec_js(Ctx, JsSrc, no_jsonify, 0, ?DEFAULT_TIMEOUT).
 
-%% @spec define_js(reference(), binary(), binary()) -> {ok, binary()} | {error, any()}
+%% @spec define_js(reference(), jssrc(), integer()) -> ok | {error, any()}
 %% @doc Define a Javascript expression:
-%% js_driver:define(Port, &lt;&lt;var blah = new Wubba();"&gt;&gt;).
+%% js_driver:define_js(Ctx, &lt;&lt;"var blah = new Wubba();"&gt;&gt;).
 %% Note: Filename is used only as a label for error reporting.
-define_js(Ctx, FileName, Js) ->
-    exec_js(Ctx, FileName, Js, no_jsonify, 0).
+define_js(Ctx, JsSrc, Timeout) ->
+    exec_js(Ctx, JsSrc, no_jsonify, 0, Timeout).
 
-%% @spec eval_js(reference(), {file, list()} | binary()) -> {ok, any()} | {error, any()}
+%% @spec eval_js(reference(), jssrc()) -> {ok, any()} | {error, any()}
 %% @doc Evaluate a Javascript expression and return the result
 %% Note: Filename is used only as a label for error reporting.
 eval_js(Ctx, JsSrc) ->
-    exec_js(Ctx, JsSrc, jsonify, 1).
+    exec_js(Ctx, JsSrc, jsonify, 1, ?DEFAULT_TIMEOUT).
 
-%% @spec eval_js(reference(), binary(), binary()) -> {ok, any()} | {error, any()}
+%% @spec eval_js(reference(), jssrc(), integer()) -> {ok, any()} | {error, any()}
 %% @doc Evaluate a Javascript expression and return the result
 %% Note: Filename is used only as a label for error reporting.
-eval_js(Ctx, FileName, Js) ->
-    exec_js(Ctx, FileName, Js, jsonify, 1).
+eval_js(Ctx, JsSrc, Timeout) ->
+    exec_js(Ctx, JsSrc, jsonify, 1, Timeout).
 
 %% Internal functions
 %% @private
@@ -101,16 +105,18 @@ jsonify(Code) when is_binary(Code) ->
     list_to_binary([<<"JSON.stringify(">>, C, <<");">>]).
 
 %% @private
-exec_js(Ctx, {file, FileName}, Jsonify, HandleRetval) ->
-    {ok, File} = file:read_file(FileName),
-    exec_js(Ctx, list_to_binary(FileName), File, Jsonify, HandleRetval);
-exec_js(Ctx, Js, Jsonify, HandleRetval) when is_binary(Js) ->
-    exec_js(Ctx, <<"unnamed">>, Js, Jsonify, HandleRetval).
+exec_js(Ctx, {file, FileName}, Jsonify, HandleRetval, Timeout) ->
+    {ok, Js} = file:read_file(FileName),
+    exec_js(Ctx, to_binary(FileName), Js, Jsonify, HandleRetval, Timeout);
+exec_js(Ctx, {FileName, Js}, Jsonify, HandleRetval, Timeout) ->
+    exec_js(Ctx, to_binary(FileName), to_binary(Js), Jsonify, HandleRetval, Timeout);
+exec_js(Ctx, Js, Jsonify, HandleRetval, Timeout) ->
+    exec_js(Ctx, <<"unnamed">>, to_binary(Js), Jsonify, HandleRetval, Timeout).
 
-exec_js(Ctx, FileName, Js, jsonify, HandleRetval) ->
-    exec_js(Ctx, FileName, jsonify(Js), no_jsonify, HandleRetval);
-exec_js(Ctx, FileName, Js, _Jsonify, HandleRetval) when is_binary(FileName), is_binary(Js) ->
-    case mozjs_nif:sm_eval(Ctx, FileName, Js, HandleRetval) of
+exec_js(Ctx, FileName, Js, jsonify, HandleRetval, Timeout) ->
+    exec_js(Ctx, FileName, jsonify(Js), no_jsonify, HandleRetval, Timeout);
+exec_js(Ctx, FileName, Js, _Jsonify, HandleRetval, Timeout) when is_binary(FileName), is_binary(Js) ->
+    case mozjs_nif:sm_eval(Ctx, FileName, Js, HandleRetval, Timeout) of
         ok ->
             ok;
 	{ok, <<"undefined">>} ->
@@ -151,3 +157,6 @@ json_converter() ->
         Contents ->
             Contents
     end.
+
+to_binary(B) when is_binary(B) -> B;
+to_binary(L) when is_list(L) -> list_to_binary(L).
