@@ -174,7 +174,6 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
       this->global = g;
 
       JSAutoRealm ar(context, g);
-      JS_InitStandardClasses(context, g);
       JS_InitReflectParse(context, g);
       JS_DefineDebuggerObject(context, g);
 
