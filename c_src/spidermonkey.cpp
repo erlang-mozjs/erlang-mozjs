@@ -165,8 +165,6 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
           .setAsmJS(true)
           .setExtraWarnings(true);
 
-      JS_BeginRequest(context);
-
       JS::CompartmentOptions options;
 
       spidermonkey_state *state = new spidermonkey_state();
@@ -184,14 +182,11 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
       JS_AddInterruptCallback(context, on_branch);
       JS_SetContextPrivate(context, state);
       JS_DefineFunction(context, g, "ejsLog", (JSNative) js_log, 0, 0);
-      JS_EndRequest(context);
 }
 
 spidermonkey_vm::~spidermonkey_vm() {
-  JS_BeginRequest(this->context);
   spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
   JS_SetContextPrivate(this->context, nullptr);
-  JS_EndRequest(this->context);
 
   //Now we should be free to proceed with
   //freeing up memory without worrying about
@@ -203,11 +198,9 @@ spidermonkey_vm::~spidermonkey_vm() {
 }
 
 void spidermonkey_vm::sm_stop() {
-  JS_BeginRequest(this->context);
   spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
   state->terminate = true;
   JS_SetContextPrivate(this->context, state);
-  JS_EndRequest(this->context);
 
   // Request interrupt callback immediately. This call is thread-safe and can
   // be called outside of JS_BeginRequest/JS_EndRequest.
@@ -215,10 +208,8 @@ void spidermonkey_vm::sm_stop() {
 }
 
 bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, const char *code, size_t code_length, char** output, int handle_retval) {
-  JS_BeginRequest(this->context);
 
   JSAutoCompartment ac(this->context, this->global);
-  JSAutoRequest ar(this->context);
 
   char* filename0 = strndup(filename, filename_length);
   JS::CompileOptions options(this->context);
@@ -234,7 +225,6 @@ bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, cons
   if (state->error) {
     *output = state->error_to_json();
     JS_SetContextPrivate(this->context, state);
-    JS_EndRequest(this->context);
     return false;
   }
 
@@ -245,7 +235,6 @@ bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, cons
   if (state->error) {
     *output = state->error_to_json();
     JS_SetContextPrivate(this->context, state);
-    JS_EndRequest(this->context);
     return false;
   }
 
@@ -257,7 +246,6 @@ bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, cons
     strncpy(*output, buf, size + 1);
     JS_free(this->context, buf);
   }
-  JS_EndRequest(this->context);
 
   return true;
 }
