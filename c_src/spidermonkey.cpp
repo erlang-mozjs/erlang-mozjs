@@ -66,8 +66,16 @@ bool js_log(JSContext *cx, unsigned argc, JS::Value *vp) {
   }
   else {
     // FIXME
-    char *filename = JS_EncodeString(cx, JS::ToString(cx, args[0]));
-    char *output = JS_EncodeString(cx, JS::ToString(cx, args[1]));
+    auto file_str = JS::ToString(cx, args[0]);
+    size_t file_size = JS_GetStringLength(file_str);
+    char* filename = (char*)malloc(file_size + 1);
+    file_size = JS_EncodeStringToBuffer(cx, file_str, filename, file_size+1);
+
+    // FIXME
+    auto out_str = JS::ToString(cx, args[1]);
+    size_t out_size = JS_GetStringLength(out_str);
+    char* output = (char*)malloc(out_size + 1);
+    out_size = JS_EncodeStringToBuffer(cx, out_str, output, out_size+1);
 
     FILE *fd = fopen(filename, "a+");
     if (fd) {
@@ -89,8 +97,8 @@ bool js_log(JSContext *cx, unsigned argc, JS::Value *vp) {
     else {
       args.rval().setBoolean(false);
     }
-    JS_free(cx, filename);
-    JS_free(cx, output);
+    free(filename);
+    free(output);
   }
   return true;
 }
