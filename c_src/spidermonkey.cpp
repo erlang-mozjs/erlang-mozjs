@@ -18,6 +18,7 @@
 #include <cstring>
 
 #include <jsapi.h>
+#include <js/CompilationAndEvaluation.h>
 #include <js/Conversions.h>
 #include <js/ContextOptions.h>
 #include <js/Warnings.h>
