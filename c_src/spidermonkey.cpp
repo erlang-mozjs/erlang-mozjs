@@ -20,6 +20,7 @@
 #include <jsapi.h>
 #include <js/Conversions.h>
 #include <js/ContextOptions.h>
+#include <js/Warnings.h>
 
 #include "spidermonkey.h"
 
