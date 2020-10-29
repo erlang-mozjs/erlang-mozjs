@@ -213,9 +213,7 @@ bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, cons
 
   char* filename0 = strndup(filename, filename_length);
   JS::CompileOptions options(this->context);
-  options
-	  .setUTF8(true)
-          .setFileAndLine(filename0, 1);
+  options.setFileAndLine(filename0, 1);
   free(filename0);
 
   JS::RootedScript script(this->context);
