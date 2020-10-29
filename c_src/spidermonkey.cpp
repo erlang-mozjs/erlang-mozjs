@@ -165,7 +165,7 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
           .setAsmJS(true)
           .setExtraWarnings(true);
 
-      JS::CompartmentOptions options;
+      JS::RealmOptions options;
 
       spidermonkey_state *state = new spidermonkey_state();
 
@@ -173,7 +173,7 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
       JS::RootedObject g(context, JS_NewGlobalObject(context, &global_class, nullptr, JS::FireOnNewGlobalHook, options));
       this->global = g;
 
-      JSAutoCompartment ac(context, g);
+      JSAutoRealm ar(context, g);
       JS_InitStandardClasses(context, g);
       JS_InitReflectParse(context, g);
       JS_DefineDebuggerObject(context, g);
@@ -209,7 +209,7 @@ void spidermonkey_vm::sm_stop() {
 
 bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, const char *code, size_t code_length, char** output, int handle_retval) {
 
-  JSAutoCompartment ac(this->context, this->global);
+  JSAutoRealm ar(this->context, this->global);
 
   char* filename0 = strndup(filename, filename_length);
   JS::CompileOptions options(this->context);
