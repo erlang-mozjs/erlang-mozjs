@@ -38,7 +38,7 @@ new() ->
 %% @doc Create a new Javascript VM instance and preload Douglas Crockford's
 %% json2 converter (http://www.json.org/js.html)
 new(ThreadStackSize, HeapSize) ->
-    Initializer = fun(X) -> define_js(X, <<"json2.js">>, json_converter()) end,
+    Initializer = fun(X) -> define_js(X, <<"json2.js">>) end,
     new(ThreadStackSize, HeapSize, Initializer).
 
 %% @type init_fun() = function(reference())
@@ -143,19 +143,6 @@ priv_dir() ->
             filename:join([filename:dirname(code:which(?MODULE)), "..", "priv"]);
         Dir ->
             Dir
-    end.
-
-%% @private
-json_converter() ->
-    is_pid(erlang:whereis(js_cache)) orelse js_cache:start_link(),
-    FileName = filename:join([priv_dir(), "json2.js"]),
-    case js_cache:fetch(FileName) of
-        error ->
-            {ok, Contents} = file:read_file(FileName),
-            js_cache:store(FileName, Contents),
-            Contents;
-        Contents ->
-            Contents
     end.
 
 to_binary(B) when is_binary(B) -> B;
