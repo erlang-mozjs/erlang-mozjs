@@ -19,8 +19,9 @@
 
 #include <jsapi.h>
 #include <js/CompilationAndEvaluation.h>
-#include <js/Conversions.h>
 #include <js/ContextOptions.h>
+#include <js/Conversions.h>
+#include <js/SourceText.h>
 #include <js/Warnings.h>
 
 #include "spidermonkey.h"
@@ -217,8 +218,14 @@ bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, cons
   options.setFileAndLine(filename0, 1);
   free(filename0);
 
-  JS::RootedScript script(this->context);
-  if (!JS::Compile(this->context, options, code, code_length, &script))
+  JS::SourceText<mozilla::Utf8Unit> source;
+  if (!source.init(this->context, code, code_length, JS::SourceOwnership::Borrowed)) {
+    //*output = state->error_to_json();
+    return false;
+  }
+
+  JS::RootedScript script(this->context, JS::Compile(this->context, options, source));
+  if (!script)
     this->check_js_exception();
   spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
   if (state->error) {
@@ -239,11 +246,10 @@ bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, cons
 
   if (handle_retval) {
     JS::RootedString str(this->context, JS::ToString(this->context, result));
-    char *buf = JS_EncodeStringToUTF8(this->context, str);
-    size_t size = strlen(buf);
+    JS::UniqueChars buf(JS_EncodeStringToUTF8(this->context, str));
+    size_t size = strlen(buf.get());
     *output = new char[size + 1];
-    strncpy(*output, buf, size + 1);
-    JS_free(this->context, buf);
+    strncpy(*output, buf.get(), size + 1);
   }
 
   return true;
