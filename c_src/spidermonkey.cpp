@@ -153,14 +153,12 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
 /* Bytes to allocate before GC */
 #define MAX_GC_SIZE 1024 * 1024
 
-      uint32_t gc_size = (uint32_t) heap_size * 0.25;
       context = JS_NewContext(MAX_GC_SIZE);
 
       JS::InitSelfHostedCode(context);
 
       JS_SetNativeStackQuota(context, thread_stack);
       JS_SetGCParameter(context, JSGC_MAX_BYTES, heap_size);
-      JS_SetGCParameter(context, JSGC_MAX_MALLOC_BYTES, gc_size);
 
       JS::ContextOptionsRef(context)
           .setIon(true)
