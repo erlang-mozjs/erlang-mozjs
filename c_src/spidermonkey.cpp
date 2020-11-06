@@ -28,8 +28,7 @@
 
 /* The class of the global object. */
 static constexpr JSClass global_class = {
-    "global", JSCLASS_GLOBAL_FLAGS,
-    nullptr, nullptr, nullptr, nullptr
+    "global", JSCLASS_GLOBAL_FLAGS, &JS::DefaultGlobalClassOps
 };
 
 void on_error(JSContext *context, JSErrorReport *report) {
