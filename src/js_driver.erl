@@ -39,6 +39,7 @@ new() ->
 %% json2 converter (http://www.json.org/js.html)
 new(ThreadStackSize, HeapSize) ->
     Initializer = fun(X) -> define_js(X, <<"json2.js">>) end,
+    %Initializer = fun(X) -> define_js(X, {file, filename:join([priv_dir(), "json2.js"])}) end,
     new(ThreadStackSize, HeapSize, Initializer).
 
 %% @type init_fun() = function(reference())
@@ -135,15 +136,15 @@ exec_js(Ctx, FileName, Js, _Jsonify, HandleRetval, Timeout) when is_binary(FileN
     end.
 
 %% @private
-priv_dir() ->
+%priv_dir() ->
     %% Hacky workaround to handle running from a standard app directory
     %% and .ez package
-    case code:priv_dir('erlang-mozjs') of
-        {error, bad_name} ->
-            filename:join([filename:dirname(code:which(?MODULE)), "..", "priv"]);
-        Dir ->
-            Dir
-    end.
+%    case code:priv_dir('erlang-mozjs') of
+%        {error, bad_name} ->
+%            filename:join([filename:dirname(code:which(?MODULE)), "..", "priv"]);
+%        Dir ->
+%            Dir
+%    end.
 
 to_binary(B) when is_binary(B) -> B;
 to_binary(L) when is_list(L) -> list_to_binary(L).
