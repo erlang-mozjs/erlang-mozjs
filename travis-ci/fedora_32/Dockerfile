@@ -1,4 +1,4 @@
-FROM fedora:29
+FROM fedora:32
 
 RUN dnf -y update
 
@@ -7,5 +7,5 @@ RUN dnf install -y  \
 	gcc-c++ \
 	git  \
 	make \
-	mozjs52-devel \
+	mozjs68-devel \
 	which
