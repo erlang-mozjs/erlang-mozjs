@@ -33,3 +33,7 @@ RUN apt-get install -y \
 	erlang-ssl=1:23.1-1 \
 	erlang-syntax-tools=1:23.1-1 \
 	erlang-tools=1:23.1-1
+
+RUN git clone https://github.com/rebar/rebar.git
+RUN cd rebar && ./bootstrap
+RUN install -m 755 -p ./rebar/rebar /usr/bin/rebar
