@@ -67,7 +67,7 @@ json_test_() ->
 	].
 
 ejslog_test_() ->
-	FileName = "/tmp/mozjs_ejslog_test.log",
+	FileName = "./mozjs_ejslog_test.log",
 	{setup,
 		fun() -> _ = file:delete(FileName), {ok, Handle} = mozjs_nif:sm_init(8, 8), Handle end,
 		fun(Handle) -> mozjs_nif:sm_stop(Handle), _ = file:delete(FileName) end,
