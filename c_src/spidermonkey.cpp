@@ -18,14 +18,17 @@
 #include <cstring>
 
 #include <jsapi.h>
+#include <js/CompilationAndEvaluation.h>
+#include <js/ContextOptions.h>
 #include <js/Conversions.h>
+#include <js/SourceText.h>
+#include <js/Warnings.h>
 
 #include "spidermonkey.h"
 
 /* The class of the global object. */
 static constexpr JSClass global_class = {
-    "global", JSCLASS_GLOBAL_FLAGS,
-    nullptr, nullptr, nullptr, nullptr
+    "global", JSCLASS_GLOBAL_FLAGS, &JS::DefaultGlobalClassOps
 };
 
 void on_error(JSContext *context, JSErrorReport *report) {
@@ -66,8 +69,16 @@ bool js_log(JSContext *cx, unsigned argc, JS::Value *vp) {
   }
   else {
     // FIXME
-    char *filename = JS_EncodeString(cx, JS::ToString(cx, args[0]));
-    char *output = JS_EncodeString(cx, JS::ToString(cx, args[1]));
+    auto file_str = JS::ToString(cx, args[0]);
+    size_t file_size = JS_GetStringLength(file_str);
+    char* filename = (char*)malloc(file_size + 1);
+    file_size = JS_EncodeStringToBuffer(cx, file_str, filename, file_size+1);
+
+    // FIXME
+    auto out_str = JS::ToString(cx, args[1]);
+    size_t out_size = JS_GetStringLength(out_str);
+    char* output = (char*)malloc(out_size + 1);
+    out_size = JS_EncodeStringToBuffer(cx, out_str, output, out_size+1);
 
     FILE *fd = fopen(filename, "a+");
     if (fd) {
@@ -89,8 +100,8 @@ bool js_log(JSContext *cx, unsigned argc, JS::Value *vp) {
     else {
       args.rval().setBoolean(false);
     }
-    JS_free(cx, filename);
-    JS_free(cx, output);
+    free(filename);
+    free(output);
   }
   return true;
 }
@@ -141,14 +152,12 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
 /* Bytes to allocate before GC */
 #define MAX_GC_SIZE 1024 * 1024
 
-      uint32_t gc_size = (uint32_t) heap_size * 0.25;
       context = JS_NewContext(MAX_GC_SIZE);
 
       JS::InitSelfHostedCode(context);
 
       JS_SetNativeStackQuota(context, thread_stack);
       JS_SetGCParameter(context, JSGC_MAX_BYTES, heap_size);
-      JS_SetGCParameter(context, JSGC_MAX_MALLOC_BYTES, gc_size);
 
       JS::ContextOptionsRef(context)
           .setIon(true)
@@ -156,9 +165,7 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
           .setAsmJS(true)
           .setExtraWarnings(true);
 
-      JS_BeginRequest(context);
-
-      JS::CompartmentOptions options;
+      JS::RealmOptions options;
 
       spidermonkey_state *state = new spidermonkey_state();
 
@@ -166,8 +173,7 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
       JS::RootedObject g(context, JS_NewGlobalObject(context, &global_class, nullptr, JS::FireOnNewGlobalHook, options));
       this->global = g;
 
-      JSAutoCompartment ac(context, g);
-      JS_InitStandardClasses(context, g);
+      JSAutoRealm ar(context, g);
       JS_InitReflectParse(context, g);
       JS_DefineDebuggerObject(context, g);
 
@@ -175,14 +181,11 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
       JS_AddInterruptCallback(context, on_branch);
       JS_SetContextPrivate(context, state);
       JS_DefineFunction(context, g, "ejsLog", (JSNative) js_log, 0, 0);
-      JS_EndRequest(context);
 }
 
 spidermonkey_vm::~spidermonkey_vm() {
-  JS_BeginRequest(this->context);
   spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
   JS_SetContextPrivate(this->context, nullptr);
-  JS_EndRequest(this->context);
 
   //Now we should be free to proceed with
   //freeing up memory without worrying about
@@ -194,11 +197,9 @@ spidermonkey_vm::~spidermonkey_vm() {
 }
 
 void spidermonkey_vm::sm_stop() {
-  JS_BeginRequest(this->context);
   spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
   state->terminate = true;
   JS_SetContextPrivate(this->context, state);
-  JS_EndRequest(this->context);
 
   // Request interrupt callback immediately. This call is thread-safe and can
   // be called outside of JS_BeginRequest/JS_EndRequest.
@@ -206,26 +207,27 @@ void spidermonkey_vm::sm_stop() {
 }
 
 bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, const char *code, size_t code_length, char** output, int handle_retval) {
-  JS_BeginRequest(this->context);
 
-  JSAutoCompartment ac(this->context, this->global);
-  JSAutoRequest ar(this->context);
+  JSAutoRealm ar(this->context, this->global);
 
   char* filename0 = strndup(filename, filename_length);
   JS::CompileOptions options(this->context);
-  options
-	  .setUTF8(true)
-          .setFileAndLine(filename0, 1);
+  options.setFileAndLine(filename0, 1);
   free(filename0);
 
-  JS::RootedScript script(this->context);
-  if (!JS::Compile(this->context, options, code, code_length, &script))
+  JS::SourceText<mozilla::Utf8Unit> source;
+  if (!source.init(this->context, code, code_length, JS::SourceOwnership::Borrowed)) {
+    //*output = state->error_to_json();
+    return false;
+  }
+
+  JS::RootedScript script(this->context, JS::Compile(this->context, options, source));
+  if (!script)
     this->check_js_exception();
   spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(this->context);
   if (state->error) {
     *output = state->error_to_json();
     JS_SetContextPrivate(this->context, state);
-    JS_EndRequest(this->context);
     return false;
   }
 
@@ -236,19 +238,16 @@ bool spidermonkey_vm::sm_eval(const char *filename, size_t filename_length, cons
   if (state->error) {
     *output = state->error_to_json();
     JS_SetContextPrivate(this->context, state);
-    JS_EndRequest(this->context);
     return false;
   }
 
   if (handle_retval) {
     JS::RootedString str(this->context, JS::ToString(this->context, result));
-    char *buf = JS_EncodeStringToUTF8(this->context, str);
-    size_t size = strlen(buf);
+    JS::UniqueChars buf(JS_EncodeStringToUTF8(this->context, str));
+    size_t size = strlen(buf.get());
     *output = new char[size + 1];
-    strncpy(*output, buf, size + 1);
-    JS_free(this->context, buf);
+    strncpy(*output, buf.get(), size + 1);
   }
-  JS_EndRequest(this->context);
 
   return true;
 }

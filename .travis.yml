@@ -4,13 +4,17 @@ services:
 - docker
 
 before_install:
-- docker build -t build_fedora_28 travis-ci/fedora_28/
-- docker build -t build_fedora_29 travis-ci/fedora_29/
-- docker build -t build_ubuntu_20.3 travis-ci/ubuntu_20.3/
-- docker build -t build_ubuntu_21 travis-ci/ubuntu_21/
+- docker build -t build_fedora_32 travis-ci/fedora_32/
+- docker build -t build_fedora_33 travis-ci/fedora_33/
+- docker build -t build_ubuntu_20_04_bionic_erlang_21 travis-ci/ubuntu_20_04_bionic_erlang_21/
+- docker build -t build_ubuntu_20_04_bionic_erlang_22 travis-ci/ubuntu_20_04_bionic_erlang_22/
+- docker build -t build_ubuntu_20_04_bionic_erlang_23 travis-ci/ubuntu_20_04_bionic_erlang_23/
 
 script:
-- docker run -v $TRAVIS_BUILD_DIR:/home/ejs/ build_fedora_28 /bin/sh -c "cd /home/ejs/; make deps; make test"
-- docker run -v $TRAVIS_BUILD_DIR:/home/ejs/ build_fedora_29 /bin/sh -c "cd /home/ejs/; make deps; make test"
-- docker run -v $TRAVIS_BUILD_DIR:/home/ejs/ build_ubuntu_20.3 /bin/sh -c "cd /home/ejs/; make deps; make test"
-- docker run -v $TRAVIS_BUILD_DIR:/home/ejs/ build_ubuntu_21 /bin/sh -c "cd /home/ejs/; make deps; make test"
+- docker run -v $TRAVIS_BUILD_DIR:/home/ejs/ build_fedora_32 /bin/sh -c "cd /home/ejs/; git clean -xdff ; make deps; make test"
+# FIXME need a recompiled Rebar. Switch to Rebar3 as well?
+#- docker run -v $TRAVIS_BUILD_DIR:/home/ejs/ build_fedora_33 /bin/sh -c "cd /home/ejs/; git clean -xdff ; make deps; make test"
+- docker run -v $TRAVIS_BUILD_DIR:/home/ejs/ build_ubuntu_20_04_bionic_erlang_21 /bin/sh -c "cd /home/ejs/; git clean -xdff ; make deps; make test"
+- docker run -v $TRAVIS_BUILD_DIR:/home/ejs/ build_ubuntu_20_04_bionic_erlang_22 /bin/sh -c "cd /home/ejs/; make clean; make deps; make test"
+# FIXME need a recompiled Rebar. Switch to Rebar3 as well?
+#- docker run -v $TRAVIS_BUILD_DIR:/home/ejs/ build_ubuntu_20_04_bionic_erlang_23 /bin/sh -c "cd /home/ejs/; make clean; make deps; make test"
