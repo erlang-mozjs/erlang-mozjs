@@ -18,6 +18,7 @@
 #include <cstring>
 
 #include <jsapi.h>
+#include <js/Initialization.h>
 #include <js/CompilationAndEvaluation.h>
 #include <js/ContextOptions.h>
 #include <js/Conversions.h>
@@ -32,7 +33,7 @@ static constexpr JSClass global_class = {
 };
 
 void on_error(JSContext *context, JSErrorReport *report) {
-  if (report->flags & JSREPORT_EXCEPTION) {
+  if (!report->isWarning()) {
     spidermonkey_state *state = (spidermonkey_state *) JS_GetContextPrivate(context);
     // FIXME FIXME FIXME remove char* cast here from char16*
     state->replace_error(report->message().c_str(), report->lineno, (char*)(report->linebuf()));
@@ -159,11 +160,10 @@ spidermonkey_vm::spidermonkey_vm(size_t thread_stack, uint32_t heap_size)
       JS_SetNativeStackQuota(context, thread_stack);
       JS_SetGCParameter(context, JSGC_MAX_BYTES, heap_size);
 
-      JS::ContextOptionsRef(context)
-          .setIon(true)
-          .setBaseline(true)
-          .setAsmJS(true)
-          .setExtraWarnings(true);
+      JS::ContextOptionsRef(context).setAsmJS(true);
+
+      JS_SetGlobalJitCompilerOption(context, JSJitCompilerOption::JSJITCOMPILER_ION_ENABLE, true);
+      JS_SetGlobalJitCompilerOption(context, JSJitCompilerOption::JSJITCOMPILER_BASELINE_ENABLE, true);
 
       JS::RealmOptions options;
 
@@ -259,7 +259,6 @@ void spidermonkey_vm::check_js_exception()
     JS_GetPendingException(this->context, &exception_v);
     JS::RootedObject exception(this->context, &exception_v.toObject());
     JSErrorReport *report = JS_ErrorFromException(this->context, exception);
-    report->flags |= JSREPORT_EXCEPTION;
     on_error(this->context, report);
     JS_ClearPendingException(this->context);
   }
