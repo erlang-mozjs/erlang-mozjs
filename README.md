@@ -102,9 +102,6 @@ make docs
 
 Apache-2.0. See [LICENSE](LICENSE) for details.
 
-This project includes [json2.js](https://github.com/douglascrockford/JSON-js)
-by Douglas Crockford, which is in the public domain.
-
 ## Contributing
 
 1. Fork the repository on [GitHub](https://github.com/erlang-mozjs/erlang-mozjs).

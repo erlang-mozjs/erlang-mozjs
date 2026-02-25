@@ -1,0 +1,58 @@
+# SPDX-FileCopyrightText: © 2022 LGTM Migrator
+# SPDX-FileCopyrightText: © 2022-2025 Peter Lemenkov
+# SPDX-FileCopyrightText: © 2023-2025 dependabot[bot]
+#
+# SPDX-License-Identifier: CC0-1.0
+
+name: "CodeQL"
+
+on:
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - 'c_src/**'
+      - '.github/workflows/codeql.yml'
+  push:
+    branches: [ "master" ]
+    paths:
+      - 'c_src/**'
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes erlang-dev erlang-nox libmozjs-115-dev g++ pkg-config
+          wget https://github.com/erlang/rebar3/releases/latest/download/rebar3
+          chmod +x rebar3
+          sudo mv rebar3 /usr/local/bin/
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: cpp
+          queries: +security-and-quality
+
+      - name: Build
+        run: |
+          CXXFLAGS="$(pkg-config --cflags mozjs-115) -std=c++17"
+          ERL_INTERFACE="$(erl -noshell -eval 'io:format("~s",[code:lib_dir(erl_interface,include)]),halt().')"
+          ERTS_INCLUDE="$(erl -noshell -eval 'io:format("~s",[filename:join([code:root_dir(),"erts-"++erlang:system_info(version),"include"])]),halt().')"
+          g++ -c -fPIC $CXXFLAGS -I"$ERL_INTERFACE" -I"$ERTS_INCLUDE" c_src/spidermonkey.cpp -o c_src/spidermonkey.o
+          g++ -c -fPIC $CXXFLAGS -I"$ERL_INTERFACE" -I"$ERTS_INCLUDE" c_src/mozjs_nif.cpp -o c_src/mozjs_nif.o
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:cpp"
