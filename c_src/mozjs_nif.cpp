@@ -2,6 +2,8 @@
 // SPDX-FileCopyrightText: 2020-2026 Peter Lemenkov <lemenkov@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+#include <cstdlib>
+
 #include "erl_nif.h"
 
 #include <js/Initialization.h>
@@ -17,6 +19,7 @@ ERL_NIF_TERM atom_noinit;
 struct mozjs_handle
 {
     spidermonkey_vm* vm = nullptr;
+    ErlNifMutex* mtx = nullptr;
 };
 
 // Prototypes
@@ -36,6 +39,7 @@ static ERL_NIF_TERM mozjs_init(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv
     (void)argc;
     auto* handle =
         static_cast<mozjs_handle*>(enif_alloc_resource(mozjs_RESOURCE, sizeof(mozjs_handle)));
+    handle->mtx = enif_mutex_create("mozjs_handle");
     unsigned int thread_stack = 0;
     uint32_t heap_size = 0;
     enif_get_uint(env, argv[0], &thread_stack);
@@ -58,9 +62,6 @@ static ERL_NIF_TERM mozjs_eval(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv
         return enif_make_badarg(env);
     auto* handle = static_cast<mozjs_handle*>(handle_ptr);
 
-    if (handle->vm == nullptr)
-        return enif_make_tuple2(env, atom_error, atom_noinit);
-
     ErlNifBinary filename, code;
 
     if (!enif_inspect_binary(env, argv[1], &filename))
@@ -72,10 +73,20 @@ static ERL_NIF_TERM mozjs_eval(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv
     int handle_retval = 0;
     enif_get_int(env, argv[3], &handle_retval);
 
+    enif_mutex_lock(handle->mtx);
+
+    if (handle->vm == nullptr)
+    {
+        enif_mutex_unlock(handle->mtx);
+        return enif_make_tuple2(env, atom_error, atom_noinit);
+    }
+
     char* output = nullptr;
     bool retval = handle->vm->sm_eval(reinterpret_cast<const char*>(filename.data), filename.size,
                                       reinterpret_cast<const char*>(code.data), code.size, &output,
                                       handle_retval);
+
+    enif_mutex_unlock(handle->mtx);
 
     if (output)
     {
@@ -123,12 +134,19 @@ static ERL_NIF_TERM mozjs_stop(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv
         return enif_make_badarg(env);
     auto* handle = static_cast<mozjs_handle*>(handle_ptr);
 
+    enif_mutex_lock(handle->mtx);
+
     if (handle->vm == nullptr)
+    {
+        enif_mutex_unlock(handle->mtx);
         return enif_make_tuple2(env, atom_error, atom_noinit);
+    }
 
     handle->vm->sm_stop();
     delete handle->vm;
     handle->vm = nullptr;
+
+    enif_mutex_unlock(handle->mtx);
 
     return atom_ok;
 }
@@ -137,12 +155,36 @@ static void mozjs_resource_cleanup(ErlNifEnv* env, void* arg)
 {
     (void)env;
     auto* handle = static_cast<mozjs_handle*>(arg);
-    if (handle->vm != nullptr)
+
+    if (handle->mtx != nullptr)
     {
-        handle->vm->sm_stop();
-        delete handle->vm;
-        handle->vm = nullptr;
+        enif_mutex_lock(handle->mtx);
+
+        if (handle->vm != nullptr)
+        {
+            handle->vm->sm_stop();
+            delete handle->vm;
+            handle->vm = nullptr;
+        }
+
+        enif_mutex_unlock(handle->mtx);
+        enif_mutex_destroy(handle->mtx);
+        handle->mtx = nullptr;
     }
+}
+
+/* Registered via atexit() right after JS_Init().  Because atexit handlers
+   run in LIFO order, this fires BEFORE the handler that JS_Init() itself
+   registered.  By the time we get here the BEAM has already shut down its
+   schedulers, so no NIF calls are in flight and all JS contexts created
+   via sm_init have been destroyed by their respective sm_stop / resource
+   destructor calls.  Calling JS_ShutDown() here joins SpiderMonkey's
+   internal helper threads (GC, compilation) cleanly.  The subsequent
+   atexit handler from JS_Init() sees that shutdown already happened and
+   becomes a no-op. */
+static void mozjs_atexit(void)
+{
+    JS_ShutDown();
 }
 
 static int on_load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
@@ -163,6 +205,7 @@ static int on_load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
     atom_noinit = enif_make_atom(env, "mozjs_not_initialized");
 
     JS_Init();
+    std::atexit(mozjs_atexit);
 
     return 0;
 }
@@ -171,11 +214,6 @@ static void on_unload(ErlNifEnv* env, void* priv_data)
 {
     (void)env;
     (void)priv_data;
-    /* JS_ShutDown() intentionally omitted.  JS_Init() registers its own
-       atexit handler for final cleanup.  Calling JS_ShutDown() here races
-       with that handler during BEAM VM exit, causing a segfault in
-       SpiderMonkey's mutex teardown. The OS reclaims all resources at
-       process exit. */
 }
 
 static int on_upgrade(ErlNifEnv* env, void** priv, void** old_priv, ERL_NIF_TERM load_info)
