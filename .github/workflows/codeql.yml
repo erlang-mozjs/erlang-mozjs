@@ -39,7 +39,7 @@ jobs:
           sudo mv rebar3 /usr/local/bin/
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4.37.5
+        uses: github/codeql-action/init@v4.37.6
         with:
           languages: cpp
           queries: +security-and-quality
@@ -53,6 +53,6 @@ jobs:
           g++ -c -fPIC $CXXFLAGS -I"$ERL_INTERFACE" -I"$ERTS_INCLUDE" c_src/mozjs_nif.cpp -o c_src/mozjs_nif.o
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4.37.5
+        uses: github/codeql-action/analyze@v4.37.6
         with:
           category: "/language:cpp"
