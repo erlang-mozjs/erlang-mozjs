@@ -102,19 +102,26 @@ bool js_log(JSContext* cx, unsigned argc, JS::Value* vp)
         FILE* fd = fopen(filename.get(), "a+");
         if (fd)
         {
-            const struct tm* tmp;
+            struct tm tmp;
             time_t t;
 
             t = time(nullptr);
-            tmp = localtime(&t);
-            fprintf(fd, "%02d/%02d/%04d (%02d:%02d:%02d): ", tmp->tm_mon + 1, tmp->tm_mday,
-                    tmp->tm_year + 1900, tmp->tm_hour, tmp->tm_min, tmp->tm_sec);
+            if (localtime_r(&t, &tmp) != nullptr)
+            {
+                fprintf(fd, "%02d/%02d/%04d (%02d:%02d:%02d): ", tmp.tm_mon + 1, tmp.tm_mday,
+                        tmp.tm_year + 1900, tmp.tm_hour, tmp.tm_min, tmp.tm_sec);
 
-            fwrite(output.get(), 1, strlen(output.get()), fd);
-            fwrite("\n", 1, 1, fd);
-            fclose(fd);
+                fwrite(output.get(), 1, strlen(output.get()), fd);
+                fwrite("\n", 1, 1, fd);
+                fclose(fd);
 
-            args.rval().setBoolean(true);
+                args.rval().setBoolean(true);
+            }
+            else
+            {
+                fclose(fd);
+                args.rval().setBoolean(false);
+            }
         }
         else
         {
