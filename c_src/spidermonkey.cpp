@@ -7,6 +7,8 @@
 
 #include <cstring>
 #include <ctime>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <js/CompilationAndEvaluation.h>
@@ -99,9 +101,17 @@ bool js_log(JSContext* cx, unsigned argc, JS::Value* vp)
             return true;
         }
 
-        FILE* fd = fopen(filename.get(), "a+");
-        if (fd)
+        int raw_fd = open(filename.get(), O_RDWR | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
+        if (raw_fd >= 0)
         {
+            FILE* fd = fdopen(raw_fd, "a+");
+            if (!fd)
+            {
+                close(raw_fd);
+                args.rval().setBoolean(false);
+                return true;
+            }
+
             struct tm tmp;
             time_t t;
 
