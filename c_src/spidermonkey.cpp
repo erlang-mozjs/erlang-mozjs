@@ -8,6 +8,8 @@
 #include <cstring>
 #include <ctime>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #include <js/CompilationAndEvaluation.h>
 #include <js/ContextOptions.h>
@@ -99,22 +101,31 @@ bool js_log(JSContext* cx, unsigned argc, JS::Value* vp)
             return true;
         }
 
-        FILE* fd = fopen(filename.get(), "a+");
-        if (fd)
+        int raw_fd = open(filename.get(), O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
+        if (raw_fd >= 0)
         {
-            const struct tm* tmp;
-            time_t t;
+            FILE* fd = fdopen(raw_fd, "a+");
+            if (fd)
+            {
+                const struct tm* tmp;
+                time_t t;
 
-            t = time(nullptr);
-            tmp = localtime(&t);
-            fprintf(fd, "%02d/%02d/%04d (%02d:%02d:%02d): ", tmp->tm_mon + 1, tmp->tm_mday,
-                    tmp->tm_year + 1900, tmp->tm_hour, tmp->tm_min, tmp->tm_sec);
+                t = time(nullptr);
+                tmp = localtime(&t);
+                fprintf(fd, "%02d/%02d/%04d (%02d:%02d:%02d): ", tmp->tm_mon + 1, tmp->tm_mday,
+                        tmp->tm_year + 1900, tmp->tm_hour, tmp->tm_min, tmp->tm_sec);
 
-            fwrite(output.get(), 1, strlen(output.get()), fd);
-            fwrite("\n", 1, 1, fd);
-            fclose(fd);
+                fwrite(output.get(), 1, strlen(output.get()), fd);
+                fwrite("\n", 1, 1, fd);
+                fclose(fd);
 
-            args.rval().setBoolean(true);
+                args.rval().setBoolean(true);
+            }
+            else
+            {
+                close(raw_fd);
+                args.rval().setBoolean(false);
+            }
         }
         else
         {
