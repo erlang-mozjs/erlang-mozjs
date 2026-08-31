@@ -22,24 +22,28 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - fedora: "41"
-            mozjs: "115"
-            otp: "26"
           - fedora: "42"
-            mozjs: "115"
+            mozjs: "128"
             otp: "26"
           - fedora: "43"
             mozjs: "128"
             otp: "26"
-          - fedora: "rawhide"
+          - fedora: "44"
             mozjs: "140"
             otp: "26"
+          - fedora: "45"
+            mozjs: "140"
+            otp: "27"
+          - fedora: "rawhide"
+            mozjs: "140"
+            otp: "27"
     steps:
       - uses: actions/checkout@v7
 
       - name: Install dependencies
         run: |
           dnf install -y --setopt=install_weak_deps=False \
+            --disablerepo=fedora-cisco-openh264 \
             erlang-jsx \
             erlang-rebar3 \
             erlang-rebar3-pc \
@@ -76,6 +80,7 @@ jobs:
       - name: Install dependencies
         run: |
           dnf install -y --setopt=install_weak_deps=False \
+            --disablerepo=fedora-cisco-openh264 \
             clang-tools-extra \
             cppcheck \
             erlang-jsx \
