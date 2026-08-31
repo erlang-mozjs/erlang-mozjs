@@ -21,11 +21,10 @@ macOS, and the BSDs.
 
 The library is tested against the following mozjs versions:
 
-| mozjs version | Fedora version |
-|---------------|----------------|
-| mozjs115      | Fedora 41–42   |
-| mozjs128      | Fedora 43–44   |
-| mozjs140      | Fedora rawhide |
+| mozjs version | Fedora version     |
+|---------------|--------------------|
+| mozjs128      | Fedora 42–43       |
+| mozjs140      | Fedora 44–45, rawhide |
 
 The build system auto-detects the installed version via `pkg-config`.
 
